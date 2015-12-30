@@ -10,10 +10,15 @@ VBAN is a simple audio over UDP protocol proposed by VB-Audio, see [VBAN Audio w
 Compilation and installation
 ----------------------------
 
-vban_receptor doesn't have a configure script. Nevertheless the makefile is very simple and has some basic variables (CC, LD, STRIP, CROSS_COMPILE, DESTDIR) to define whatever compilation toolchain you wish to use and where you want to install. This will probably evolve in future releases.
-So simply use:
+vban_receptor uses ALSA, therefore you need to have ALSA library and headers available on your platform.
+In standard Linux distributions, ALSA library package is usually named libasound(X) and header files come in package named libasound(X)-dev.
 
-    $ make
+vban_receptor is distributed with autotools build scripts, therefore, to build, you need to invoke:
+    $ ./autogen.sh              # probably only once for ever
+    $ ./configure               # with or without options
+    $ make                      # with or without options
+
+To install, simply invoke:
     # make install
 
 Usage
