@@ -14,24 +14,24 @@ vban_receptor uses ALSA, therefore you need to have ALSA library and headers ava
 In standard Linux distributions, ALSA library package is usually named libasound(X) and header files come in package named libasound(X)-dev.
 
 vban_receptor is distributed with autotools build scripts, therefore, to build, you need to invoke:
-    $ ./autogen.sh              # probably only once for ever
-    $ ./configure               # with or without options
-    $ make                      # with or without options
+	$ ./autogen.sh              # probably only once for ever
+	$ ./configure               # with or without options
+	$ make                      # with or without options
 
 To install, simply invoke:
-    # make install
+	# make install
 
 Usage
 -----
 
 Invoking vban_receptor without any parameter will give hints on how to use it :
 
-    Usage: vban_receptor [OPTIONS]...
+	Usage: vban_receptor [OPTIONS]...
 
-    -i, --ipaddress=IP    : ipaddress to get stream from
-    -p, --port=PORT       : port to listen to
-    -s, --streamname=NAME : streamname to play
-    -q, --quality=ID      : network quality indicator from 0 (low latency) to 4. default is 1
-    -h, --help            : display this message
+	-i, --ipaddress=IP    : ipaddress to get stream from
+	-p, --port=PORT       : port to listen to
+	-s, --streamname=NAME : streamname to play
+	-q, --quality=ID      : network quality indicator from 0 (low latency) to 4. default is 1
+	-h, --help            : display this message
 
 
