@@ -62,20 +62,21 @@ void usage()
 int get_options(struct config_t* config, int argc, char* const* argv)
 {
     int c = 0;
-    int index = 0;
+
     static const struct option options[] =
     {
         {"ipaddress",   required_argument,  0, 'i'},
         {"port",        required_argument,  0, 'p'},
         {"streamname",  required_argument,  0, 's'},
         {"quality",     required_argument,  0, 'd'},
-        {"help",        no_argument,        0, 'h'}
+        {"help",        no_argument,        0, 'h'},
+        {0,             0,                  0,  0 }
     };
 
     /* yes, I assume config is not 0 */
     while (1)
     {
-        c = getopt_long(argc, argv, "i:p:s:q:h", options, &index);
+        c = getopt_long(argc, argv, "i:p:s:q:h", options, NULL);
         if (c == -1)
             break;
 
