@@ -1,5 +1,5 @@
 # Let's define some things here
-AM_CFLAGS = -ansi -Wpedantic -Wall -Wno-multichar -O2
+AM_CFLAGS = -std=c99 -Wpedantic -Wall -Wno-multichar -O2
 AM_LDFLAGS = -lasound
 
 bin_PROGRAMS = vban_receptor
