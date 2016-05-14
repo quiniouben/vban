@@ -25,7 +25,7 @@
 #include "audio.h"
 #include "logger.h"
 
-#define VBAN_RECEPTOR_VERSION   "v0.5"
+#define VBAN_RECEPTOR_VERSION   "v0.6.0"
 #define MAIN_IP_ADDRESS_SIZE    32
 
 struct config_t

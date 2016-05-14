@@ -28,12 +28,13 @@ Usage
 
 Invoking vban_receptor without any parameter will give hints on how to use it :
 
-    Usage: vban_receptor [OPTIONS]...
+Usage: vban_receptor [OPTIONS]...
 
-    -i, --ipaddress=IP    : ipaddress to get stream from
-    -p, --port=PORT       : port to listen to
-    -s, --streamname=NAME : streamname to play
-    -q, --quality=ID      : network quality indicator from 0 (low latency) to 4. default is 1
-    -h, --help            : display this message
-
+-i, --ipaddress=IP    : ipaddress to get stream from
+-p, --port=PORT       : port to listen to
+-s, --streamname=NAME : streamname to play
+-q, --quality=ID      : network quality indicator from 0 (low latency) to 4. default is 1
+-o, --output=NAME     : Alsa output device name, as given by "aplay -L" output. default is"default"
+-d, --debug=LEVEL     : Log level, from 0 (FATAL) to 4 (DEBUG). default is 1 (ERROR)
+-h, --help            : display this message
 
