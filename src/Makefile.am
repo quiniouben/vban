@@ -3,4 +3,4 @@ AM_CFLAGS = -std=c99 -Wpedantic -Wall -Wno-multichar -O2
 AM_LDFLAGS = -lasound
 
 bin_PROGRAMS = vban_receptor
-vban_receptor_SOURCES = main.c audio.h audio.c socket.h socket.c vban.h
+vban_receptor_SOURCES = main.c audio.h audio.c socket.h socket.c vban.h logger.h logger.c

@@ -20,14 +20,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "logger.h"
 
 #define AUDIO_DEVICE        "default"
 
 struct audio_t
 {
     snd_pcm_t*              alsa_handle;
-    enum VBanBitResolution  bitResolution;
-    unsigned int            nbChannels;
+    char const*             output_name;
+    enum VBanBitResolution  bit_resolution;
+    unsigned int            nb_channels;
     unsigned int            rate;
     size_t                  buffer_size;
 };
@@ -106,22 +108,29 @@ size_t computeSize(unsigned char quality)
     return nnn;
 }
 
-int audio_init(audio_handle_t* handle, unsigned char quality)
+int audio_init(audio_handle_t* handle, char const* output_name, unsigned char quality)
 {
     if (handle == 0)
     {
-        printf("audio_init: null handle pointer\n");
+        logger_log(LOG_FATAL, "audio_init: null handle pointer");
+        return -EINVAL;
+    }
+
+    if (output_name == 0)
+    {
+        logger_log(LOG_FATAL, "audio_init: null output_name pointer");
         return -EINVAL;
     }
 
     *handle = (struct audio_t*)malloc(sizeof(struct audio_t));
     if (*handle == 0)
     {
-        printf("audio_init: could not allocate memory\n");
+        logger_log(LOG_FATAL, "audio_init: could not allocate memory");
         return -ENOMEM;
     }
 
     (*handle)->buffer_size = computeSize(quality);
+    (*handle)->output_name = output_name;
 
     return 0;
 }
@@ -132,7 +141,7 @@ int audio_release(audio_handle_t* handle)
 
     if (handle == 0)
     {
-        printf("audio_release: null handle pointer\n");
+        logger_log(LOG_FATAL, "audio_release: null handle pointer");
         return -EINVAL;
     }
 
@@ -159,7 +168,7 @@ int audio_process_packet(audio_handle_t handle, char const* buffer, int size)
 
     if ((handle == 0) || (buffer == 0))
     {
-        printf("audio_process_packet: handle pointer or buffer pointer is null\n");
+        logger_log(LOG_ERROR, "audio_process_packet: handle pointer or buffer pointer is null");
         return -EINVAL;
     }
 
@@ -194,8 +203,8 @@ int audio_process_packet(audio_handle_t handle, char const* buffer, int size)
     }
 
     /** check that audio device is configured at correct format */
-    if ((bit_resolution != handle->bitResolution) 
-        || (nb_channels != handle->nbChannels) 
+    if ((bit_resolution != handle->bit_resolution) 
+        || (nb_channels != handle->nb_channels) 
         || (sample_rate != handle->rate))
     {
         /* we have to (re-)open the device with correct format */
@@ -226,7 +235,7 @@ int audio_open(audio_handle_t handle, enum VBanBitResolution bit_resolution, uns
 
     if (handle == 0)
     {
-        printf("audio_open: handle pointer is null\n");
+        logger_log(LOG_FATAL, "audio_open: handle pointer is null");
         return -EINVAL;
     }
 
@@ -236,13 +245,20 @@ int audio_open(audio_handle_t handle, enum VBanBitResolution bit_resolution, uns
         return ret;
     }
 
-    ret = snd_pcm_open(&handle->alsa_handle, AUDIO_DEVICE, SND_PCM_STREAM_PLAYBACK, 0);
+    logger_log(LOG_INFO, "audio_open with params:\n \
+        \tdevice:\t%s\n \
+        \tnb_channels:\t%d\n \
+        \trate:\t%d", handle->output_name, nb_channels, rate);
+
+    ret = snd_pcm_open(&handle->alsa_handle, handle->output_name, SND_PCM_STREAM_PLAYBACK, 0);
     if (ret < 0)
     {
-        printf("audio_open: open error: %s\n", snd_strerror(ret));
+        logger_log(LOG_FATAL, "audio_open: open error: %s", snd_strerror(ret));
         handle->alsa_handle = 0;
         return ret;
     }
+
+    logger_log(LOG_DEBUG, "audio_open: snd_pcm_open");
 
     ret = snd_pcm_set_params(handle->alsa_handle,
                                 vban_to_alsa_format(bit_resolution),
@@ -254,7 +270,7 @@ int audio_open(audio_handle_t handle, enum VBanBitResolution bit_resolution, uns
 
     if (ret < 0)
     {
-        printf("audio_open: set_params error: %s", snd_strerror(ret));
+        logger_log(LOG_ERROR, "audio_open: set_params error: %s", snd_strerror(ret));
         audio_close(handle);
         return ret;
     }
@@ -262,13 +278,13 @@ int audio_open(audio_handle_t handle, enum VBanBitResolution bit_resolution, uns
     ret = snd_pcm_prepare(handle->alsa_handle);
     if (ret < 0)
     {
-        printf("audio_open: prepare error: %s", snd_strerror(ret));
+        logger_log(LOG_ERROR, "audio_open: prepare error: %s", snd_strerror(ret));
         audio_close(handle);
         return ret;
     }
 
-    handle->bitResolution   = bit_resolution;
-    handle->nbChannels      = nb_channels;
+    handle->bit_resolution   = bit_resolution;
+    handle->nb_channels      = nb_channels;
     handle->rate            = rate;
 
     return ret;
@@ -280,7 +296,7 @@ int audio_close(audio_handle_t handle)
 
     if (handle == 0)
     {
-        printf("audio_close: handle pointer is null\n");
+        logger_log(LOG_FATAL, "audio_close: handle pointer is null");
         return -EINVAL;
     }
 
@@ -302,29 +318,29 @@ int audio_write(audio_handle_t handle, char const* data, size_t size)
 
     if ((handle == 0) || (data == 0))
     {
-        printf("audio_write: handle or data pointer is null\n");
+        logger_log(LOG_ERROR, "audio_write: handle or data pointer is null");
         return -EINVAL;
     }
 
     if (handle->alsa_handle == 0)
     {
-        printf("audio_write: device not open\n");
+        logger_log(LOG_ERROR, "audio_write: device not open");
         return -ENODEV;
     }
     
     ret = snd_pcm_writei(handle->alsa_handle, data, size);
     if (ret < 0)
     {
-        printf("audio_write: snd_pcm_writei failed: %s\n", snd_strerror(ret));
+        logger_log(LOG_ERROR, "audio_write: snd_pcm_writei failed: %s", snd_strerror(ret));
         ret = snd_pcm_recover(handle->alsa_handle, ret, 0);
         if (ret < 0)
         {
-            printf("audio_write: snd_pcm_writei failed: %s\n", snd_strerror(ret));
+            logger_log(LOG_ERROR, "audio_write: snd_pcm_writei failed: %s", snd_strerror(ret));
         }
     }
     else if (ret > 0 && ret < size)
     {
-        printf("audio_write: short write (expected %lu, wrote %i)\n", size, ret);
+        logger_log(LOG_ERROR, "audio_write: short write (expected %lu, wrote %i)", size, ret);
     }
 
     return ret;

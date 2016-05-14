@@ -16,21 +16,22 @@
  *  along with vban_receptor.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __SOCKET_H__
-#define __SOCKET_H__
+#ifndef __LOGGER_H__
+#define __LOGGER_H__
 
-#include <stddef.h>
-#include <errno.h>
+enum LogLevel
+{
+    LOG_FATAL,
+    LOG_ERROR,
+    LOG_WARNING,
+    LOG_INFO,
+    LOG_DEBUG
+};
 
-struct socket_t;
-typedef struct socket_t* socket_handle_t;
+extern enum LogLevel LoggerOutputLevel;
 
-int socket_init(socket_handle_t* handle);
-int socket_release(socket_handle_t* handle);
+void logger_set_output_level(enum LogLevel level);
+void logger_log(enum LogLevel msgLevel, const char* format, ... );
 
-int socket_open(socket_handle_t handle, short port, unsigned int timeout);
-int socket_close(socket_handle_t handle);
-int socket_recvfrom(socket_handle_t handle, char* buffer, size_t size, char* ipfrom);
-
-#endif /*__SOCKET_H__*/
+#endif /*__LOGGER_H__*/
 

@@ -24,10 +24,13 @@
 #include <stddef.h>
 #include <errno.h>
 
+#define AUDIO_OUTPUT_NAME_SIZE      64
+#define AUDIO_OUTPUT_NAME_DEFAULT   "default"
+
 struct audio_t;
 typedef struct audio_t* audio_handle_t;
 
-int audio_init(audio_handle_t* handle, unsigned char quality);
+int audio_init(audio_handle_t* handle, char const* output_name, unsigned char quality);
 int audio_release(audio_handle_t* handle);
 
 int audio_process_packet(audio_handle_t handle, char const* buffer, int size);

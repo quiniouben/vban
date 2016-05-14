@@ -25,6 +25,7 @@
 #include <arpa/inet.h>
 #include <sys/poll.h>
 #include <unistd.h>
+#include "logger.h"
 
 struct socket_t
 {
@@ -35,14 +36,14 @@ int socket_init(socket_handle_t* handle)
 {
     if (handle == 0)
     {
-        printf("socket_init: null handle pointer\n");
+        logger_log(LOG_FATAL, "socket_init: null handle pointer");
         return -EINVAL;
     }
 
     *handle = (struct socket_t*)malloc(sizeof(struct socket_t));
     if (*handle == 0)
     {
-        printf("socket_init: could not allocate memory\n");
+        logger_log(LOG_FATAL, "socket_init: could not allocate memory");
         return -ENOMEM;
     }
 
@@ -55,7 +56,7 @@ int socket_release(socket_handle_t* handle)
 
     if (handle == 0)
     {
-        printf("socket_release: null handle pointer\n");
+        logger_log(LOG_FATAL, "socket_release: null handle pointer");
         return -EINVAL;
     }
 
@@ -76,7 +77,7 @@ int socket_open(socket_handle_t handle, short port, unsigned int timeout)
 
     if (handle == 0)
     {
-        printf("socket_open: one parameter is a null pointer\n");
+        logger_log(LOG_FATAL, "socket_open: one parameter is a null pointer");
         return -EINVAL;
     }
 
@@ -85,7 +86,7 @@ int socket_open(socket_handle_t handle, short port, unsigned int timeout)
         ret = socket_close(handle);
         if (ret != 0)
         {
-            printf("socket_open: socket was open and unable to close it\n");
+            logger_log(LOG_ERROR, "socket_open: socket was open and unable to close it");
             return ret;
         }
     }
@@ -93,7 +94,7 @@ int socket_open(socket_handle_t handle, short port, unsigned int timeout)
     handle->fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (handle->fd < 0)
     {
-        printf("socket_open: unable to create socket\n");
+        logger_log(LOG_ERROR, "socket_open: unable to create socket");
         ret = handle->fd;
         handle->fd = 0;
         return ret;
@@ -107,10 +108,12 @@ int socket_open(socket_handle_t handle, short port, unsigned int timeout)
 
     if (ret < 0)
     {
-        printf("socket_open: unable to bind socket\n");
+        logger_log(LOG_ERROR, "socket_open: unable to bind socket");
         socket_close(handle);
         return errno;
     }
+
+    logger_log(LOG_INFO, "socket_open with port: %d", port);
 
     return 0;
 }
@@ -121,7 +124,7 @@ int socket_close(socket_handle_t handle)
 
     if (handle == 0)
     {
-        printf("socket_close: handle parameter is a null pointer\n");
+        logger_log(LOG_FATAL, "socket_close: handle parameter is a null pointer");
         return -EINVAL;
     }
 
@@ -131,7 +134,7 @@ int socket_close(socket_handle_t handle)
         handle->fd = 0;
         if (ret != 0)
         {
-            printf("socket_close: unable to close socket\n");
+            logger_log(LOG_ERROR, "socket_close: unable to close socket");
             return ret;
         }
     }
@@ -145,15 +148,17 @@ int socket_recvfrom(socket_handle_t handle, char* buffer, size_t size, char* ipf
     struct sockaddr_in si_other;
     socklen_t slen = sizeof(si_other);
 
+    logger_log(LOG_DEBUG, "socket_recvfrom invoked");
+
     if ((handle == 0) || (buffer == 0) || (ipfrom == 0))
     {
-        printf("socket_readfrom: one parameter is a null pointer\n");
+        logger_log(LOG_ERROR, "socket_readfrom: one parameter is a null pointer");
         return -EINVAL;
     }
 
     if (handle->fd == 0)
     {
-        printf("socket_readfrom: socket is not open\n");
+        logger_log(LOG_ERROR, "socket_readfrom: socket is not open");
         return -ENODEV;
     }
 
@@ -162,7 +167,7 @@ int socket_recvfrom(socket_handle_t handle, char* buffer, size_t size, char* ipf
     {
         if (errno != EINTR)
         {
-            printf("socket_readfrom: recvfrom error %d %s\n", errno, strerror(errno));
+            logger_log(LOG_ERROR, "socket_readfrom: recvfrom error %d %s", errno, strerror(errno));
         }
         return ret;
     }

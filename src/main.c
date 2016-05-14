@@ -23,6 +23,7 @@
 #include "vban.h"
 #include "socket.h"
 #include "audio.h"
+#include "logger.h"
 
 #define VBAN_RECEPTOR_VERSION   "v0.5"
 #define MAIN_IP_ADDRESS_SIZE    32
@@ -33,6 +34,7 @@ struct config_t
     unsigned short          port;
     char                    stream_name[VBAN_STREAM_NAME_SIZE];
     unsigned char           quality;
+    char                    audio_output_name[AUDIO_OUTPUT_NAME_SIZE];
 };
 
 struct main_t
@@ -56,6 +58,8 @@ void usage()
     printf("-p, --port=PORT       : port to listen to\n");
     printf("-s, --streamname=NAME : streamname to play\n");
     printf("-q, --quality=ID      : network quality indicator from 0 (low latency) to 4. default is 1\n");
+    printf("-o, --output=NAME     : Alsa output device name, as given by \"aplay -L\" output. default is\""AUDIO_OUTPUT_NAME_DEFAULT"\"\n");
+    printf("-d, --debug=LEVEL     : Log level, from 0 (FATAL) to 4 (DEBUG). default is 1 (ERROR)\n");
     printf("-h, --help            : display this message\n\n");
 }
 
@@ -63,12 +67,16 @@ int get_options(struct config_t* config, int argc, char* const* argv)
 {
     int c = 0;
 
+    strcpy(config->audio_output_name, AUDIO_OUTPUT_NAME_DEFAULT);
+
     static const struct option options[] =
     {
         {"ipaddress",   required_argument,  0, 'i'},
         {"port",        required_argument,  0, 'p'},
         {"streamname",  required_argument,  0, 's'},
-        {"quality",     required_argument,  0, 'd'},
+        {"quality",     required_argument,  0, 'q'},
+        {"output",      required_argument,  0, 'o'},
+        {"debug",       required_argument,  0, 'd'},
         {"help",        no_argument,        0, 'h'},
         {0,             0,                  0,  0 }
     };
@@ -76,7 +84,7 @@ int get_options(struct config_t* config, int argc, char* const* argv)
     /* yes, I assume config is not 0 */
     while (1)
     {
-        c = getopt_long(argc, argv, "i:p:s:q:h", options, NULL);
+        c = getopt_long(argc, argv, "i:p:s:q:o:d:h", options, NULL);
         if (c == -1)
             break;
 
@@ -96,6 +104,14 @@ int get_options(struct config_t* config, int argc, char* const* argv)
 
             case 'q':
                 config->quality = atoi(optarg);
+                break;
+
+            case 'o':
+                memcpy(config->audio_output_name, optarg, AUDIO_OUTPUT_NAME_SIZE);
+                break;
+
+            case 'd':
+                logger_set_output_level(atoi(optarg));
                 break;
 
             case 'h':
@@ -175,7 +191,7 @@ int process_packet(struct main_t* s_main, int size, char const* ipfrom)
             break;
 
         default:
-            printf("process_packet: packet with unknown protocol\n");
+            logger_log(LOG_ERROR, "process_packet: packet with unknown protocol");
             ret = -EINVAL;
             break;
     }
@@ -207,7 +223,7 @@ int main(int argc, char* const* argv)
         return ret;
     }
 
-    ret = audio_init(&s_main.audio, s_main.config.quality);
+    ret = audio_init(&s_main.audio, (char const*)s_main.config.audio_output_name, s_main.config.quality);
     if (ret != 0)
     {
         return ret;
