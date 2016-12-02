@@ -45,6 +45,7 @@ About --channels option, a bit more tips:
 * if you use in-existent channels, you will get silence but no error (as the stream may change at anytime)
 
 Examples:
-    vban_receptor -i IP -p PORT -s STREAMNAME -c1                   # keep only channel 1 and play out as mono
-    vban_receptor -i IP -p PORT -s STREAMNAME -c1,1,1,1             # keep only channel 1 and play it out on 4 output channels (given that your output device is able to do it)
-    vban_receptor -i IP -p PORT -s STREAMNAME -c2,41,125,7,1,45     # select some channels and play them out on 6 output channels (same comment)
+
+	vban_receptor -i IP -p PORT -s STREAMNAME -c1                   # keep only channel 1 and play out as mono
+	vban_receptor -i IP -p PORT -s STREAMNAME -c1,1,1,1             # keep only channel 1 and play it out on 4 output channels (given that your output device is able to do it)
+	vban_receptor -i IP -p PORT -s STREAMNAME -c2,41,125,7,1,45     # select some channels and play them out on 6 output channels (same comment)
