@@ -32,12 +32,16 @@ struct audio_t
     unsigned int            nb_channels;
     unsigned int            rate;
     size_t                  buffer_size;
+    unsigned char const*    channels;
+    int                     channels_size;
+    char*                   channels_buffer;
 };
 
 static int audio_is_format_supported(audio_handle_t handle, enum VBanBitResolution bit_resolution, unsigned int nb_channels, unsigned int rate);
 static int audio_open(audio_handle_t handle, enum VBanBitResolution bit_resolution, unsigned int nb_channels, unsigned int rate);
 static int audio_close(audio_handle_t handle);
 static int audio_write(audio_handle_t handle, char const* data, size_t size);
+static int audio_extract_channels(audio_handle_t handle, char const* buffer, size_t size);
 static size_t computeSize(unsigned char quality);
 
 static snd_pcm_format_t vban_to_alsa_format(enum VBanBitResolution bit_resolution)
@@ -130,7 +134,7 @@ int audio_init(audio_handle_t* handle, char const* output_name, unsigned char qu
     }
 
     (*handle)->buffer_size = computeSize(quality);
-    (*handle)->output_name = output_name;
+    (*handle)->output_name = (output_name[0] != 0) ? output_name : AUDIO_OUTPUT_NAME_DEFAULT;
 
     return 0;
 }
@@ -155,9 +159,39 @@ int audio_release(audio_handle_t* handle)
     return ret;
 }
 
+int audio_set_channels(audio_handle_t handle, unsigned char const* channels, int channels_size)
+{
+    int ret = 0;
+
+    if ((handle == 0) || (channels == 0))
+    {
+        logger_log(LOG_ERROR, "audio_set_channels: handle pointer or channels buffer pointer is null");
+        return -EINVAL;
+    }
+
+    if (handle->channels_buffer != 0)
+    {
+        free(handle->channels_buffer);
+    }
+
+    handle->channels_buffer = malloc(sizeof(struct VBanHeader) + VBAN_PROTOCOL_MAX_SIZE);
+    if (handle->channels_buffer == 0)
+    {
+        logger_log(LOG_FATAL, "audio_set_channels: could not allocate memory");
+        return -ENOMEM;
+    }
+
+    handle->channels = channels;
+    handle->channels_size = channels_size;
+
+    logger_log(LOG_INFO, "audio_set_channels: setting up channels selection for %u channels", handle->channels_size);
+
+    return ret;
+}
+
 int audio_process_packet(audio_handle_t handle, char const* buffer, int size)
 {
-    struct VBanHeader const* const hdr = (struct VBanHeader const*)buffer;
+    struct VBanHeader const* hdr = (struct VBanHeader const*)buffer;
     int payload_size = 0;
     int ret = 0;
     long sample_rate = 0;
@@ -192,6 +226,18 @@ int audio_process_packet(audio_handle_t handle, char const* buffer, int size)
         goto end;
     }
 
+    if (handle->channels != 0)
+    {
+        ret = audio_extract_channels(handle, buffer, size);
+        if (ret != 0)
+        {
+            logger_log(LOG_ERROR, "audio_process_packet: unable to extract selected channels");
+            goto end;
+        }
+        hdr = (struct VBanHeader const*)handle->channels_buffer;
+        nb_channels     = hdr->format_nbc + 1;
+    }
+
     /** check that format is supported */
     sample_rate     = ((hdr->format_SR & VBAN_SR_MASK) < VBAN_SR_MAXNUMBER)
                         ? VBanSRList[(hdr->format_SR & VBAN_SR_MASK)]
@@ -223,9 +269,51 @@ end:
     return ret;
 }
 
+int audio_extract_channels(audio_handle_t handle, char const* buffer, size_t size)
+{
+    int ret = 0;
+    struct VBanHeader const* const orig_hdr = (struct VBanHeader const*)buffer;
+    char const* const orig_data = (char const*)(orig_hdr + 1);
+    struct VBanHeader* const dest_hdr = (struct VBanHeader*)handle->channels_buffer;
+    char* const dest_data = (char*)(dest_hdr + 1);
+    size_t const sample_size = VBanBitResolutionSize[(dest_hdr->format_bit & VBAN_BIT_RESOLUTION_MASK)];
+    char* dest_ptr;
+    char const* orig_ptr;
+
+    size_t chan = 0;
+    size_t sample = 0;
+
+    if ((handle == 0) || (buffer == 0))
+    {
+        logger_log(LOG_FATAL, "audio_extract_channels: handle or buffer pointer is null");
+        return -EINVAL;
+    }
+
+    *dest_hdr               = *orig_hdr;
+    dest_hdr->format_nbc    = handle->channels_size - 1;
+
+    memset(dest_data, 0, (dest_hdr->format_nbc + 1)* (dest_hdr->format_nbs + 1) * sample_size);
+
+    /* TODO: can this be optimized ? */
+    for (chan = 0; chan != dest_hdr->format_nbc + 1; ++chan)
+    {
+        if (handle->channels[chan] < (orig_hdr->format_nbc + 1))
+        {
+            for (sample = 0; sample != dest_hdr->format_nbs + 1; ++sample)
+            {
+                dest_ptr = dest_data + (((sample * (dest_hdr->format_nbc + 1)) + chan) * sample_size);
+                orig_ptr = orig_data + (((sample * (orig_hdr->format_nbc + 1)) + handle->channels[chan]) * sample_size);
+                memcpy(dest_ptr, orig_ptr, sample_size);
+            }
+        }
+    }
+    
+    return ret;
+}
+
 int audio_is_format_supported(audio_handle_t handle, enum VBanBitResolution bit_resolution, unsigned int nb_channels, unsigned int rate)
 {
-    /*XXX todo */
+    /*TODO*/
     return 1;
 }
 

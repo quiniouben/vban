@@ -25,7 +25,7 @@
 #include "audio.h"
 #include "logger.h"
 
-#define VBAN_RECEPTOR_VERSION   "v0.6.0"
+#define VBAN_RECEPTOR_VERSION   "v0.7.0"
 #define MAIN_IP_ADDRESS_SIZE    32
 
 struct config_t
@@ -35,6 +35,8 @@ struct config_t
     char                    stream_name[VBAN_STREAM_NAME_SIZE];
     unsigned char           quality;
     char                    audio_output_name[AUDIO_OUTPUT_NAME_SIZE];
+    unsigned char           audio_channels[VBAN_CHANNELS_MAX_NB];
+    int                     audio_channels_nb;
 };
 
 struct main_t
@@ -53,21 +55,44 @@ void signalHandler(int signum)
 
 void usage()
 {
-    printf("Usage: vban_receptor [OPTIONS]...\n\n");
-    printf("-i, --ipaddress=IP    : ipaddress to get stream from\n");
-    printf("-p, --port=PORT       : port to listen to\n");
-    printf("-s, --streamname=NAME : streamname to play\n");
-    printf("-q, --quality=ID      : network quality indicator from 0 (low latency) to 4. default is 1\n");
-    printf("-o, --output=NAME     : Alsa output device name, as given by \"aplay -L\" output. default is\""AUDIO_OUTPUT_NAME_DEFAULT"\"\n");
-    printf("-d, --debug=LEVEL     : Log level, from 0 (FATAL) to 4 (DEBUG). default is 1 (ERROR)\n");
-    printf("-h, --help            : display this message\n\n");
+    printf("\nUsage: vban_receptor [OPTIONS]...\n\n");
+    printf("-i, --ipaddress=IP      : ipaddress to get stream from\n");
+    printf("-p, --port=PORT         : port to listen to\n");
+    printf("-s, --streamname=NAME   : streamname to play\n");
+    printf("-q, --quality=ID        : network quality indicator from 0 (low latency) to 4. default is 1\n");
+    printf("-c, --channels=LIST     : channels from the stream to use. LIST is of form x,y,z,... default is to forward the stream as it is\n");
+    printf("-o, --output=NAME       : Alsa output device name, as given by \"aplay -L\" output. default is\""AUDIO_OUTPUT_NAME_DEFAULT"\"\n");
+    printf("-d, --debug=LEVEL       : Log level, from 0 (FATAL) to 4 (DEBUG). default is 1 (ERROR)\n");
+    printf("-h, --help              : display this message\n\n");
+}
+
+int parse_channel_list(unsigned char* channels, char* args)
+{
+    unsigned int chan = 0;
+    size_t index = 0;
+    char* token = strtok(args, ",");
+
+    while ((index < VBAN_CHANNELS_MAX_NB) && (token != 0))
+    {
+        if (sscanf(token, "%u", &chan) == EOF)
+            break;
+
+        if ((chan > VBAN_CHANNELS_MAX_NB) || (chan < 1))
+        {
+            logger_log(LOG_ERROR, "parse_channel_list: invalid channel id %u, stop parsing", chan);
+            break;
+        }
+
+        channels[index++] = (unsigned char)(chan - 1);
+        token = strtok(0, ",");
+    }
+
+    return index;
 }
 
 int get_options(struct config_t* config, int argc, char* const* argv)
 {
     int c = 0;
-
-    strcpy(config->audio_output_name, AUDIO_OUTPUT_NAME_DEFAULT);
 
     static const struct option options[] =
     {
@@ -75,6 +100,7 @@ int get_options(struct config_t* config, int argc, char* const* argv)
         {"port",        required_argument,  0, 'p'},
         {"streamname",  required_argument,  0, 's'},
         {"quality",     required_argument,  0, 'q'},
+        {"channels",    required_argument,  0, 'c'},
         {"output",      required_argument,  0, 'o'},
         {"debug",       required_argument,  0, 'd'},
         {"help",        no_argument,        0, 'h'},
@@ -84,14 +110,14 @@ int get_options(struct config_t* config, int argc, char* const* argv)
     /* yes, I assume config is not 0 */
     while (1)
     {
-        c = getopt_long(argc, argv, "i:p:s:q:o:d:h", options, NULL);
+        c = getopt_long(argc, argv, "i:p:s:q:c:o:d:h", options, 0);
         if (c == -1)
             break;
 
         switch (c)
         {
             case 'i':
-                memcpy(config->ip_address, optarg, MAIN_IP_ADDRESS_SIZE);
+                strncpy(config->ip_address, optarg, MAIN_IP_ADDRESS_SIZE);
                 break;
 
             case 'p':
@@ -99,15 +125,19 @@ int get_options(struct config_t* config, int argc, char* const* argv)
                 break;
 
             case 's':
-                memcpy(config->stream_name, optarg, VBAN_STREAM_NAME_SIZE);
+                strncpy(config->stream_name, optarg, VBAN_STREAM_NAME_SIZE);
                 break;
 
             case 'q':
                 config->quality = atoi(optarg);
                 break;
 
+            case 'c':
+                config->audio_channels_nb = parse_channel_list(config->audio_channels, optarg);
+                break;
+
             case 'o':
-                memcpy(config->audio_output_name, optarg, AUDIO_OUTPUT_NAME_SIZE);
+                strncpy(config->audio_output_name, optarg, AUDIO_OUTPUT_NAME_SIZE);
                 break;
 
             case 'd':
@@ -126,6 +156,7 @@ int get_options(struct config_t* config, int argc, char* const* argv)
         || (config->port == 0)
         || (config->stream_name[0] == 0))
     {
+        logger_log(LOG_FATAL, "Missing ip address, port or stream name");
         usage();
         return 1;
     }
@@ -206,7 +237,7 @@ int main(int argc, char* const* argv)
     struct main_t s_main;
     char ipfrom[MAIN_IP_ADDRESS_SIZE];
 
-    printf("vban_receptor version %s\n", VBAN_RECEPTOR_VERSION);
+    printf("vban_receptor version %s\n\n", VBAN_RECEPTOR_VERSION);
 
     memset(&s_main, 0, sizeof(struct main_t));
     if (get_options(&s_main.config, argc, argv))
@@ -227,6 +258,11 @@ int main(int argc, char* const* argv)
     if (ret != 0)
     {
         return ret;
+    }
+
+    if (s_main.config.audio_channels_nb != 0)
+    {
+        ret = audio_set_channels(s_main.audio, s_main.config.audio_channels, s_main.config.audio_channels_nb);
     }
 
     ret = socket_open(s_main.socket, s_main.config.port, 0);

@@ -20,7 +20,6 @@
 #define __SOCKET_H__
 
 #include <stddef.h>
-#include <errno.h>
 
 struct socket_t;
 typedef struct socket_t* socket_handle_t;

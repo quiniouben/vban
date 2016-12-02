@@ -33,6 +33,7 @@ typedef struct audio_t* audio_handle_t;
 int audio_init(audio_handle_t* handle, char const* output_name, unsigned char quality);
 int audio_release(audio_handle_t* handle);
 
+int audio_set_channels(audio_handle_t handle, unsigned char const* channels, int channels_size);
 int audio_process_packet(audio_handle_t handle, char const* buffer, int size);
 
 #endif /*__AUDIO_H__*/
