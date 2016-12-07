@@ -17,6 +17,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <signal.h>
 #include <getopt.h>
@@ -25,7 +26,7 @@
 #include "audio.h"
 #include "logger.h"
 
-#define VBAN_RECEPTOR_VERSION   "v0.7.0"
+#define VBAN_RECEPTOR_VERSION   "v0.8.0"
 #define MAIN_IP_ADDRESS_SIZE    32
 
 struct config_t
@@ -34,6 +35,7 @@ struct config_t
     unsigned short          port;
     char                    stream_name[VBAN_STREAM_NAME_SIZE];
     unsigned char           quality;
+    int                     audio_backend_type;
     char                    audio_output_name[AUDIO_OUTPUT_NAME_SIZE];
     unsigned char           audio_channels[VBAN_CHANNELS_MAX_NB];
     int                     audio_channels_nb;
@@ -56,14 +58,31 @@ void signalHandler(int signum)
 void usage()
 {
     printf("\nUsage: vban_receptor [OPTIONS]...\n\n");
-    printf("-i, --ipaddress=IP      : ipaddress to get stream from\n");
-    printf("-p, --port=PORT         : port to listen to\n");
-    printf("-s, --streamname=NAME   : streamname to play\n");
+    printf("-i, --ipaddress=IP      : MANDATORY. ipaddress to get stream from\n");
+    printf("-p, --port=PORT         : MANDATORY. port to listen to\n");
+    printf("-s, --streamname=NAME   : MANDATORY. streamname to play\n");
+    printf("-b, --backend=TYPE      : audio backend to use. possible values: alsa and pulseaudio. default is alsa\n");
     printf("-q, --quality=ID        : network quality indicator from 0 (low latency) to 4. default is 1\n");
     printf("-c, --channels=LIST     : channels from the stream to use. LIST is of form x,y,z,... default is to forward the stream as it is\n");
-    printf("-o, --output=NAME       : Alsa output device name, as given by \"aplay -L\" output. default is\""AUDIO_OUTPUT_NAME_DEFAULT"\"\n");
+    printf("-o, --output=NAME       : Alsa output device name, as given by \"aplay -L\" output. using backend's default by default\n");
     printf("-d, --debug=LEVEL       : Log level, from 0 (FATAL) to 4 (DEBUG). default is 1 (ERROR)\n");
     printf("-h, --help              : display this message\n\n");
+}
+
+void parse_audio_backend_type(int* type, char const* args)
+{
+    if (!strcmp(args, "alsa"))
+    {
+        *type = AUDIO_BACKEND_ALSA;
+    }
+    else if (!strcmp(args, "pulseaudio"))
+    {
+        *type = AUDIO_BACKEND_PULSEAUDIO;
+    }
+    else
+    {
+        *type = -1;
+    }
 }
 
 int parse_channel_list(unsigned char* channels, char* args)
@@ -99,6 +118,7 @@ int get_options(struct config_t* config, int argc, char* const* argv)
         {"ipaddress",   required_argument,  0, 'i'},
         {"port",        required_argument,  0, 'p'},
         {"streamname",  required_argument,  0, 's'},
+        {"backend",     required_argument,  0, 'b'},
         {"quality",     required_argument,  0, 'q'},
         {"channels",    required_argument,  0, 'c'},
         {"output",      required_argument,  0, 'o'},
@@ -110,7 +130,7 @@ int get_options(struct config_t* config, int argc, char* const* argv)
     /* yes, I assume config is not 0 */
     while (1)
     {
-        c = getopt_long(argc, argv, "i:p:s:q:c:o:d:h", options, 0);
+        c = getopt_long(argc, argv, "i:p:s:b:q:c:o:d:h", options, 0);
         if (c == -1)
             break;
 
@@ -127,6 +147,9 @@ int get_options(struct config_t* config, int argc, char* const* argv)
             case 's':
                 strncpy(config->stream_name, optarg, VBAN_STREAM_NAME_SIZE);
                 break;
+
+            case 'b':
+                parse_audio_backend_type(&config->audio_backend_type, optarg);
 
             case 'q':
                 config->quality = atoi(optarg);
@@ -165,14 +188,14 @@ int get_options(struct config_t* config, int argc, char* const* argv)
 }
 
 /** This is where all VBan specific handling is done */
-int process_packet(struct main_t* s_main, int size, char const* ipfrom)
+int process_packet(struct main_t* main_s, int size, char const* ipfrom)
 {
     int ret = 0;
     enum VBanProtocol protocol = VBAN_PROTOCOL_UNDEFINED_4;
     enum VBanCodec codec = VBAN_BIT_RESOLUTION_MAX;
 
-    /* yes, I assume s_main is not 0, neither s_main->buffer */
-    struct VBanHeader const* const hdr = (struct VBanHeader const*)s_main->buffer;
+    /* yes, I assume main_s is not 0, neither main_s->buffer */
+    struct VBanHeader const* const hdr = (struct VBanHeader const*)main_s->buffer;
 
     /** check size */
     if (size <= VBAN_HEADER_SIZE)
@@ -187,8 +210,8 @@ int process_packet(struct main_t* s_main, int size, char const* ipfrom)
     }
 
     /** check stream identity */
-    if (strcmp(ipfrom, s_main->config.ip_address)
-        || strcmp(s_main->config.stream_name, hdr->streamname))
+    if (strcmp(ipfrom, main_s->config.ip_address)
+        || strcmp(main_s->config.stream_name, hdr->streamname))
     {
         goto end;
     }
@@ -208,7 +231,7 @@ int process_packet(struct main_t* s_main, int size, char const* ipfrom)
         case VBAN_PROTOCOL_AUDIO:
             if (codec == VBAN_CODEC_PCM)
             {
-                ret = audio_process_packet(s_main->audio, s_main->buffer, size);
+                ret = audio_process_packet(main_s->audio, main_s->buffer, size);
             }
             break;
 
@@ -234,13 +257,13 @@ end:
 int main(int argc, char* const* argv)
 {
     int ret = 0;
-    struct main_t s_main;
+    struct main_t main_s;
     char ipfrom[MAIN_IP_ADDRESS_SIZE];
 
     printf("vban_receptor version %s\n\n", VBAN_RECEPTOR_VERSION);
 
-    memset(&s_main, 0, sizeof(struct main_t));
-    if (get_options(&s_main.config, argc, argv))
+    memset(&main_s, 0, sizeof(struct main_t));
+    if (get_options(&main_s.config, argc, argv))
     {
         return 1;
     }
@@ -248,36 +271,36 @@ int main(int argc, char* const* argv)
     signal(SIGINT, signalHandler);
     signal(SIGTERM, signalHandler);
 
-    ret = socket_init(&s_main.socket);
+    ret = socket_init(&main_s.socket);
     if (ret != 0)
     {
         return ret;
     }
 
-    ret = audio_init(&s_main.audio, (char const*)s_main.config.audio_output_name, s_main.config.quality);
+    ret = audio_init(&main_s.audio, main_s.config.audio_backend_type, (char const*)main_s.config.audio_output_name, main_s.config.quality);
     if (ret != 0)
     {
         return ret;
     }
 
-    if (s_main.config.audio_channels_nb != 0)
+    if (main_s.config.audio_channels_nb != 0)
     {
-        ret = audio_set_channels(s_main.audio, s_main.config.audio_channels, s_main.config.audio_channels_nb);
+        ret = audio_set_channels(main_s.audio, main_s.config.audio_channels, main_s.config.audio_channels_nb);
     }
 
-    ret = socket_open(s_main.socket, s_main.config.port, 0);
+    ret = socket_open(main_s.socket, main_s.config.port, 0);
 
     while ((ret >= 0) && MainRun)
     {
-        ret = socket_recvfrom(s_main.socket, s_main.buffer, VBAN_PROTOCOL_MAX_SIZE, ipfrom);
+        ret = socket_recvfrom(main_s.socket, main_s.buffer, VBAN_PROTOCOL_MAX_SIZE, ipfrom);
         if (ret > 0)
         {
-            ret = process_packet(&s_main, ret, ipfrom);
+            ret = process_packet(&main_s, ret, ipfrom);
         }
     }
 
-    audio_release(&s_main.audio);
-    socket_release(&s_main.socket);
+    audio_release(&main_s.audio);
+    socket_release(&main_s.socket);
 
     return 0;
 }

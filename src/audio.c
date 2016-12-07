@@ -20,13 +20,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "audio_backend.h"
+#if ALSA
+#include "alsa_backend.h"
+#endif
+#if PULSEAUDIO
+#include "pulseaudio_backend.h"
+#endif
 #include "logger.h"
 
 #define AUDIO_DEVICE        "default"
 
 struct audio_t
 {
-    snd_pcm_t*              alsa_handle;
+    audio_backend_handle_t  backend;
     char const*             output_name;
     enum VBanBitResolution  bit_resolution;
     unsigned int            nb_channels;
@@ -37,39 +44,9 @@ struct audio_t
     char*                   channels_buffer;
 };
 
-static int audio_is_format_supported(audio_handle_t handle, enum VBanBitResolution bit_resolution, unsigned int nb_channels, unsigned int rate);
 static int audio_open(audio_handle_t handle, enum VBanBitResolution bit_resolution, unsigned int nb_channels, unsigned int rate);
-static int audio_close(audio_handle_t handle);
-static int audio_write(audio_handle_t handle, char const* data, size_t size);
 static int audio_extract_channels(audio_handle_t handle, char const* buffer, size_t size);
 static size_t computeSize(unsigned char quality);
-
-static snd_pcm_format_t vban_to_alsa_format(enum VBanBitResolution bit_resolution)
-{
-    switch (bit_resolution)
-    {
-        case VBAN_BITFMT_8_INT:
-            return SND_PCM_FORMAT_S8;
-
-        case VBAN_BITFMT_16_INT:
-            return SND_PCM_FORMAT_S16;
-
-        case VBAN_BITFMT_24_INT:
-            return SND_PCM_FORMAT_S24;
-
-        case VBAN_BITFMT_32_INT:
-            return SND_PCM_FORMAT_S32;
-
-        case VBAN_BITFMT_32_FLOAT:
-            return SND_PCM_FORMAT_FLOAT;
-
-        case VBAN_BITFMT_64_FLOAT:
-            return SND_PCM_FORMAT_FLOAT64;
-
-        default:
-            return SND_PCM_FORMAT_UNKNOWN;
-    }
-}
 
 size_t computeSize(unsigned char quality)
 {
@@ -112,8 +89,10 @@ size_t computeSize(unsigned char quality)
     return nnn;
 }
 
-int audio_init(audio_handle_t* handle, char const* output_name, unsigned char quality)
+int audio_init(audio_handle_t* handle, enum audio_backend_type type, char const* output_name, unsigned char quality)
 {
+    int ret = 0;
+
     if (handle == 0)
     {
         logger_log(LOG_FATAL, "audio_init: null handle pointer");
@@ -134,9 +113,34 @@ int audio_init(audio_handle_t* handle, char const* output_name, unsigned char qu
     }
 
     (*handle)->buffer_size = computeSize(quality);
-    (*handle)->output_name = (output_name[0] != 0) ? output_name : AUDIO_OUTPUT_NAME_DEFAULT;
+    (*handle)->output_name = output_name;
+    
+    /* I prefer factories, but well, I don't see more than 5 possible backends */
+    switch (type)
+    {
+        case AUDIO_BACKEND_ALSA:
+            #if ALSA
+            ret = alsa_backend_init(&((*handle)->backend));
+            #else
+            logger_log(LOG_FATAL, "audio_init: alsa backend not compiled");
+            ret = -EINVAL;
+            #endif
+            break;
 
-    return 0;
+        case AUDIO_BACKEND_PULSEAUDIO:
+            #if PULSEAUDIO
+            ret = pulseaudio_backend_init(&((*handle)->backend));
+            #else
+            logger_log(LOG_FATAL, "audio_init: pulseaudio backend not compiled");
+            ret = -EINVAL;
+            #endif
+            break;
+
+        default:
+            break;
+    }
+
+    return ret;
 }
 
 int audio_release(audio_handle_t* handle)
@@ -151,7 +155,7 @@ int audio_release(audio_handle_t* handle)
 
     if (*handle != 0)
     {
-        ret = audio_close(*handle);
+        ret = (*handle)->backend->close((*handle)->backend);
         free(*handle);
         *handle = 0;
     }
@@ -242,7 +246,7 @@ int audio_process_packet(audio_handle_t handle, char const* buffer, int size)
     sample_rate     = ((hdr->format_SR & VBAN_SR_MASK) < VBAN_SR_MAXNUMBER)
                         ? VBanSRList[(hdr->format_SR & VBAN_SR_MASK)]
                         : 0;
-    ret = audio_is_format_supported(handle, bit_resolution, nb_channels, sample_rate);
+    ret = handle->backend->is_fmt_supported(handle->backend, bit_resolution, nb_channels, sample_rate);
     if (ret <= 0)
     {
         goto end;
@@ -263,7 +267,7 @@ int audio_process_packet(audio_handle_t handle, char const* buffer, int size)
     }
 
     /** write payload to the audio device */
-    ret = audio_write(handle, (char const*)(hdr + 1), nb_samples);
+    ret = handle->backend->write(handle->backend, (char const*)(hdr + 1), nb_samples);
 
 end:
     return ret;
@@ -311,12 +315,6 @@ int audio_extract_channels(audio_handle_t handle, char const* buffer, size_t siz
     return ret;
 }
 
-int audio_is_format_supported(audio_handle_t handle, enum VBanBitResolution bit_resolution, unsigned int nb_channels, unsigned int rate)
-{
-    /*TODO*/
-    return 1;
-}
-
 int audio_open(audio_handle_t handle, enum VBanBitResolution bit_resolution, unsigned int nb_channels, unsigned int rate)
 {
     int ret = 0;
@@ -327,109 +325,17 @@ int audio_open(audio_handle_t handle, enum VBanBitResolution bit_resolution, uns
         return -EINVAL;
     }
 
-    ret = audio_close(handle);
+    ret = handle->backend->close(handle->backend);
     if (ret < 0)
     {
         return ret;
     }
 
-    logger_log(LOG_INFO, "audio_open with params:\n \
-        \tdevice:\t%s\n \
-        \tnb_channels:\t%d\n \
-        \trate:\t%d", handle->output_name, nb_channels, rate);
-
-    ret = snd_pcm_open(&handle->alsa_handle, handle->output_name, SND_PCM_STREAM_PLAYBACK, 0);
-    if (ret < 0)
-    {
-        logger_log(LOG_FATAL, "audio_open: open error: %s", snd_strerror(ret));
-        handle->alsa_handle = 0;
-        return ret;
-    }
-
-    logger_log(LOG_DEBUG, "audio_open: snd_pcm_open");
-
-    ret = snd_pcm_set_params(handle->alsa_handle,
-                                vban_to_alsa_format(bit_resolution),
-                                SND_PCM_ACCESS_RW_INTERLEAVED,
-                                nb_channels,
-                                rate,
-                                1,
-                                ((unsigned int)handle->buffer_size * 1000000) / rate);
-
-    if (ret < 0)
-    {
-        logger_log(LOG_ERROR, "audio_open: set_params error: %s", snd_strerror(ret));
-        audio_close(handle);
-        return ret;
-    }
-
-    ret = snd_pcm_prepare(handle->alsa_handle);
-    if (ret < 0)
-    {
-        logger_log(LOG_ERROR, "audio_open: prepare error: %s", snd_strerror(ret));
-        audio_close(handle);
-        return ret;
-    }
+    ret = handle->backend->open(handle->backend, handle->output_name, bit_resolution, nb_channels, rate, handle->buffer_size);
 
     handle->bit_resolution   = bit_resolution;
     handle->nb_channels      = nb_channels;
     handle->rate            = rate;
-
-    return ret;
-}
-
-int audio_close(audio_handle_t handle)
-{
-    int ret = 0;
-
-    if (handle == 0)
-    {
-        logger_log(LOG_FATAL, "audio_close: handle pointer is null");
-        return -EINVAL;
-    }
-
-    if (handle->alsa_handle == 0)
-    {
-        /** nothing to do */
-        return 0;
-    }
-
-    ret = snd_pcm_close(handle->alsa_handle);
-    handle->alsa_handle = 0;
-
-    return ret;
-}
-
-int audio_write(audio_handle_t handle, char const* data, size_t size)
-{
-    int ret = 0;
-
-    if ((handle == 0) || (data == 0))
-    {
-        logger_log(LOG_ERROR, "audio_write: handle or data pointer is null");
-        return -EINVAL;
-    }
-
-    if (handle->alsa_handle == 0)
-    {
-        logger_log(LOG_ERROR, "audio_write: device not open");
-        return -ENODEV;
-    }
-    
-    ret = snd_pcm_writei(handle->alsa_handle, data, size);
-    if (ret < 0)
-    {
-        logger_log(LOG_ERROR, "audio_write: snd_pcm_writei failed: %s", snd_strerror(ret));
-        ret = snd_pcm_recover(handle->alsa_handle, ret, 0);
-        if (ret < 0)
-        {
-            logger_log(LOG_ERROR, "audio_write: snd_pcm_writei failed: %s", snd_strerror(ret));
-        }
-    }
-    else if (ret > 0 && ret < size)
-    {
-        logger_log(LOG_ERROR, "audio_write: short write (expected %lu, wrote %i)", size, ret);
-    }
 
     return ret;
 }

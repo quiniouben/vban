@@ -20,17 +20,24 @@
 #define __AUDIO_H__
 
 #include "vban.h"
-#include <alsa/asoundlib.h>
 #include <stddef.h>
 #include <errno.h>
 
 #define AUDIO_OUTPUT_NAME_SIZE      64
-#define AUDIO_OUTPUT_NAME_DEFAULT   "default"
 
 struct audio_t;
 typedef struct audio_t* audio_handle_t;
 
-int audio_init(audio_handle_t* handle, char const* output_name, unsigned char quality);
+enum audio_backend_type
+{
+    AUDIO_BACKEND_ALSA,
+    AUDIO_BACKEND_PULSEAUDIO,
+    AUDIO_BACKEND_NB,
+};
+
+/*XXX I would like to have a audio_get_options and a audio_parse_options */
+
+int audio_init(audio_handle_t* handle, enum audio_backend_type type, char const* output_name, unsigned char quality);
 int audio_release(audio_handle_t* handle);
 
 int audio_set_channels(audio_handle_t handle, unsigned char const* channels, int channels_size);
