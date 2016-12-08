@@ -32,6 +32,7 @@ enum audio_backend_type
 {
     AUDIO_BACKEND_ALSA,
     AUDIO_BACKEND_PULSEAUDIO,
+    AUDIO_BACKEND_PIPE,
     AUDIO_BACKEND_NB,
 };
 
