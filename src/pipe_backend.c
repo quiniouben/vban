@@ -72,7 +72,7 @@ int pipe_open(audio_backend_handle_t handle, char const* output_name, enum VBanB
 	logger_log(LOG_FATAL, "pipe_open: unable to mknod(): ???");
 	//todo:strerror
 	perror("mknod");
-	pipe_backend->fd=NULL;
+	pipe_backend->fd = 0;
 	return ret;
     }
 
