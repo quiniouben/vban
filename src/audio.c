@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "audio_backend.h"
+#include "pipe_backend.h"
 #if ALSA
 #include "alsa_backend.h"
 #endif
@@ -135,6 +136,10 @@ int audio_init(audio_handle_t* handle, enum audio_backend_type type, char const*
             ret = -EINVAL;
             #endif
             break;
+
+	case AUDIO_BACKEND_PIPE:
+	    ret = pipe_backend_init(&((*handle)->backend));
+	    break;
 
         default:
             break;
