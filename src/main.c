@@ -27,7 +27,7 @@
 #include "audio_backend.h"
 #include "logger.h"
 
-#define VBAN_RECEPTOR_VERSION   "v0.8.5"
+#define VBAN_RECEPTOR_VERSION   "v0.8.6"
 #define MAIN_IP_ADDRESS_SIZE    32
 
 struct config_t
@@ -111,6 +111,9 @@ int get_options(struct config_t* config, int argc, char* const* argv)
         {"help",        no_argument,        0, 'h'},
         {0,             0,                  0,  0 }
     };
+
+    // default values
+    config->quality = 1;
 
     /* yes, I assume config is not 0 */
     while (1)

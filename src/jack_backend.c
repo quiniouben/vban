@@ -6,6 +6,8 @@
 #include <string.h>
 #include "logger.h"
 
+#define NB_BUFFERS  8
+
 struct jack_backend_t
 {
     struct audio_backend_t  parent;
@@ -14,7 +16,6 @@ struct jack_backend_t
     char*                   buffer;
     char const*             rd_ptr;
     char*                   wr_ptr;
-    char const*             trigger_ptr;
     size_t                  buffer_size;
     enum VBanBitResolution  bit_resolution;
     unsigned int            nb_channels;
@@ -45,8 +46,6 @@ static int jack_start(struct jack_backend_t* jack_backend)
     }
 
     logger_log(LOG_DEBUG, "%s: jack activated", __func__);
-
-    jack_backend->active = 1;
 
     for (port = 0; port != jack_backend->nb_channels; ++port)
     {
@@ -165,12 +164,9 @@ int jack_open(audio_backend_handle_t handle, char const* output_name, enum VBanB
         return -EINVAL;
     }
 
-    /*XXX could be used to select jack server name*/
-    (void)output_name;
-
     if (jack_backend->jack_client == 0)
     {
-        jack_backend->jack_client = jack_client_open("vban_receptor", 0, 0);
+        jack_backend->jack_client = jack_client_open("vban_receptor", 0, 0, (output_name[0] == '\0') ? 0 : output_name);
         if (jack_backend->jack_client == 0)
         {
             logger_log(LOG_ERROR, "%s: could not open jack client", __func__);
@@ -178,30 +174,17 @@ int jack_open(audio_backend_handle_t handle, char const* output_name, enum VBanB
         }
     }
 
-    jack_buffer_size = jack_get_buffer_size(jack_backend->jack_client);
-    jack_backend->buffer_size = jack_buffer_size;
-    if (buffer_size > jack_buffer_size)
-    {
-        jack_backend->buffer_size = buffer_size;
-    }
-
-    //XXX why the hell do I need such a huge buffer oversizing to make it work ?
-    // the latency is not bad (it is supposed to be 2 jack frames, as we activate the
-    // client when we reach trigger_ptr) but woah, what is going on ?
-    jack_backend->buffer_size *= 10;
-    jack_backend->buffer = calloc(1, jack_backend->buffer_size);
+    jack_buffer_size            = jack_get_buffer_size(jack_backend->jack_client);
+    jack_backend->buffer_size   = ((buffer_size > jack_buffer_size) ? buffer_size : jack_buffer_size) * NB_BUFFERS;
+    jack_backend->buffer        = calloc(1, jack_backend->buffer_size);
     if (jack_backend->buffer == 0)
     {
         logger_log(LOG_ERROR, "%s: memory allocation failed", __func__);
         return -ENOMEM;
     }
 
-    logger_log(LOG_INFO, "%s: jack bufsize %lu, vban bufsize %lu, backend bufsize %lu", __func__,
-        jack_buffer_size, buffer_size, jack_backend->buffer_size);
-
     jack_backend->rd_ptr            = jack_backend->buffer;
-    jack_backend->wr_ptr            = jack_backend->buffer;
-    jack_backend->trigger_ptr       = jack_backend->buffer + (jack_buffer_size * 2);
+    jack_backend->wr_ptr            = jack_backend->buffer + (jack_backend->buffer_size / 2);
     jack_backend->nb_channels       = nb_channels;
     jack_backend->bit_resolution    = bit_resolution;
 
@@ -215,7 +198,7 @@ int jack_open(audio_backend_handle_t handle, char const* output_name, enum VBanB
 
     jack_on_shutdown(jack_backend->jack_client, jack_shutdown_cb, jack_backend);
 
-//    ret = jack_start(jack_backend);
+    ret = jack_start(jack_backend);
 
     return ret;
 }
@@ -263,6 +246,8 @@ int jack_write(audio_backend_handle_t handle, char const* data, size_t nb_sample
     size_t incoming_size = 0;
     ptrdiff_t xtra_size = 0;
 
+    logger_log(LOG_DEBUG, "%s", __func__);
+
     if ((handle == 0) || (data == 0))
     {
         logger_log(LOG_ERROR, "%s: handle or data pointer is null", __func__);
@@ -287,12 +272,10 @@ int jack_write(audio_backend_handle_t handle, char const* data, size_t nb_sample
     else
     {
         memcpy(jack_backend->wr_ptr, data, incoming_size);
-        jack_backend->wr_ptr += incoming_size;
-    }
-
-    if (!jack_backend->active && (jack_backend->wr_ptr > jack_backend->trigger_ptr))
-    {
-        ret = jack_start(jack_backend);
+        if (jack_backend->active)
+        {
+            jack_backend->wr_ptr += incoming_size;
+        }
     }
 
     return ret;
@@ -310,6 +293,10 @@ int jack_process_cb(jack_nframes_t nframes, void* arg)
         logger_log(LOG_ERROR, "%s: handle pointer is null", __func__);
         return -EINVAL;
     }
+
+    logger_log(LOG_DEBUG, "%s", __func__);
+
+    jack_backend->active = 1;
 
     for (channel = 0; channel != jack_backend->nb_channels; ++channel)
     {
