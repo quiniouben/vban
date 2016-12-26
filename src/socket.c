@@ -37,14 +37,14 @@ int socket_init(socket_handle_t* handle)
 {
     if (handle == 0)
     {
-        logger_log(LOG_FATAL, "socket_init: null handle pointer");
+        logger_log(LOG_FATAL, "%s: null handle pointer", __func__);
         return -EINVAL;
     }
 
-    *handle = (struct socket_t*)malloc(sizeof(struct socket_t));
+    *handle = calloc(1, sizeof(struct socket_t));
     if (*handle == 0)
     {
-        logger_log(LOG_FATAL, "socket_init: could not allocate memory");
+        logger_log(LOG_FATAL, "%s: could not allocate memory", __func__);
         return -ENOMEM;
     }
 
@@ -57,7 +57,7 @@ int socket_release(socket_handle_t* handle)
 
     if (handle == 0)
     {
-        logger_log(LOG_FATAL, "socket_release: null handle pointer");
+        logger_log(LOG_FATAL, "%s: null handle pointer", __func__);
         return -EINVAL;
     }
 
@@ -78,7 +78,7 @@ int socket_open(socket_handle_t handle, short port, unsigned int timeout)
 
     if (handle == 0)
     {
-        logger_log(LOG_FATAL, "socket_open: one parameter is a null pointer");
+        logger_log(LOG_FATAL, "%s: one parameter is a null pointer", __func__);
         return -EINVAL;
     }
 
@@ -87,7 +87,7 @@ int socket_open(socket_handle_t handle, short port, unsigned int timeout)
         ret = socket_close(handle);
         if (ret != 0)
         {
-            logger_log(LOG_ERROR, "socket_open: socket was open and unable to close it");
+            logger_log(LOG_ERROR, "%s: socket was open and unable to close it", __func__);
             return ret;
         }
     }
@@ -95,7 +95,7 @@ int socket_open(socket_handle_t handle, short port, unsigned int timeout)
     handle->fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (handle->fd < 0)
     {
-        logger_log(LOG_ERROR, "socket_open: unable to create socket");
+        logger_log(LOG_ERROR, "%s: unable to create socket", __func__);
         ret = handle->fd;
         handle->fd = 0;
         return ret;
@@ -109,12 +109,12 @@ int socket_open(socket_handle_t handle, short port, unsigned int timeout)
 
     if (ret < 0)
     {
-        logger_log(LOG_ERROR, "socket_open: unable to bind socket");
+        logger_log(LOG_ERROR, "%s: unable to bind socket", __func__);
         socket_close(handle);
         return errno;
     }
 
-    logger_log(LOG_INFO, "socket_open with port: %d", port);
+    logger_log(LOG_INFO, "%s with port: %d", __func__, port);
 
     return 0;
 }
@@ -125,7 +125,7 @@ int socket_close(socket_handle_t handle)
 
     if (handle == 0)
     {
-        logger_log(LOG_FATAL, "socket_close: handle parameter is a null pointer");
+        logger_log(LOG_FATAL, "%s: handle parameter is a null pointer", __func__);
         return -EINVAL;
     }
 
@@ -135,7 +135,7 @@ int socket_close(socket_handle_t handle)
         handle->fd = 0;
         if (ret != 0)
         {
-            logger_log(LOG_ERROR, "socket_close: unable to close socket");
+            logger_log(LOG_ERROR, "%s: unable to close socket", __func__);
             return ret;
         }
     }
@@ -149,17 +149,17 @@ int socket_recvfrom(socket_handle_t handle, char* buffer, size_t size, char* ipf
     struct sockaddr_in si_other;
     socklen_t slen = sizeof(si_other);
 
-    logger_log(LOG_DEBUG, "socket_recvfrom invoked");
+    logger_log(LOG_DEBUG, "%s invoked", __func__);
 
     if ((handle == 0) || (buffer == 0) || (ipfrom == 0))
     {
-        logger_log(LOG_ERROR, "socket_readfrom: one parameter is a null pointer");
+        logger_log(LOG_ERROR, "%s: one parameter is a null pointer", __func__);
         return -EINVAL;
     }
 
     if (handle->fd == 0)
     {
-        logger_log(LOG_ERROR, "socket_readfrom: socket is not open");
+        logger_log(LOG_ERROR, "%s: socket is not open", __func__);
         return -ENODEV;
     }
 
@@ -168,7 +168,7 @@ int socket_recvfrom(socket_handle_t handle, char* buffer, size_t size, char* ipf
     {
         if (errno != EINTR)
         {
-            logger_log(LOG_ERROR, "socket_readfrom: recvfrom error %d %s", errno, strerror(errno));
+            logger_log(LOG_ERROR, "%s: recvfrom error %d %s", __func__, errno, strerror(errno));
         }
         return ret;
     }

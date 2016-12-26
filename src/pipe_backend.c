@@ -27,14 +27,14 @@ int pipe_backend_init(audio_backend_handle_t* handle)
 
     if (handle == 0)
     {
-        logger_log(LOG_FATAL, "pipe_backend_init: null handle pointer");
+        logger_log(LOG_FATAL, "%s: null handle pointer", __func__);
         return -EINVAL;
     }
 
-    pipe_backend = (struct pipe_backend_t*)malloc(sizeof(struct pipe_backend_t));
+    pipe_backend = calloc(1, sizeof(struct pipe_backend_t));
     if (pipe_backend == 0)
     {
-        logger_log(LOG_FATAL, "pipe_backend_init: could not allocate memory");
+        logger_log(LOG_FATAL, "%s: could not allocate memory", __func__);
         return -ENOMEM;
     }
 
@@ -62,14 +62,14 @@ int pipe_open(audio_backend_handle_t handle, char const* output_name, enum VBanB
 
     if (handle == 0)
     {
-        logger_log(LOG_FATAL, "pipe_open: handle pointer is null");
+        logger_log(LOG_FATAL, "%s: handle pointer is null", __func__);
         return -EINVAL;
     }
 
     ret = mkfifo(FIFO_FILENAME, 0666);
     if (ret < 0)
     {
-	logger_log(LOG_FATAL, "pipe_open: unable to mknod(): ???");
+	logger_log(LOG_FATAL, "%s: ???", __func__);
 	//todo:strerror
 	perror("mknod");
 	pipe_backend->fd = 0;
@@ -79,7 +79,7 @@ int pipe_open(audio_backend_handle_t handle, char const* output_name, enum VBanB
     pipe_backend->fd = open(FIFO_FILENAME, O_WRONLY);
     if (pipe_backend->fd == -1)
     {
-        logger_log(LOG_FATAL, "pipe_open: open error"); //
+        logger_log(LOG_FATAL, "%s: open error", __func__); //
 	perror("open");
         return ret;
     }
@@ -94,7 +94,7 @@ int pipe_close(audio_backend_handle_t handle)
 
     if (handle == 0)
     {
-        logger_log(LOG_FATAL, "pipe_close: handle pointer is null");
+        logger_log(LOG_FATAL, "%s: handle pointer is null", __func__);
         return -EINVAL;
     }
 
@@ -116,14 +116,14 @@ int pipe_write(audio_backend_handle_t handle, char const* data, size_t nb_sample
 
     if ((handle == 0) || (data == 0))
     {
-        logger_log(LOG_ERROR, "pipe_write: handle or data pointer is null");
+        logger_log(LOG_ERROR, "%s: handle or data pointer is null", __func__);
         return -EINVAL;
     }
 
     ret = write(pipe_backend->fd, (const void *)data, nb_sample);
     if (ret < 0)
     {
-        logger_log(LOG_ERROR, "pipe_write: write failed:");
+        logger_log(LOG_ERROR, "%s:", __func__);
         perror("write");
     }
     return ret;

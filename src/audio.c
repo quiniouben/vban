@@ -89,20 +89,20 @@ int audio_init(audio_handle_t* handle, char const* backend_type, char const* out
 
     if (handle == 0)
     {
-        logger_log(LOG_FATAL, "audio_init: null handle pointer");
+        logger_log(LOG_FATAL, "%s: null handle pointer", __func__);
         return -EINVAL;
     }
 
     if (output_name == 0)
     {
-        logger_log(LOG_FATAL, "audio_init: null output_name pointer");
+        logger_log(LOG_FATAL, "%s: null output_name pointer", __func__);
         return -EINVAL;
     }
 
-    *handle = (struct audio_t*)malloc(sizeof(struct audio_t));
+    *handle = (struct audio_t*)calloc(1, sizeof(struct audio_t));
     if (*handle == 0)
     {
-        logger_log(LOG_FATAL, "audio_init: could not allocate memory");
+        logger_log(LOG_FATAL, "%s: could not allocate memory", __func__);
         return -ENOMEM;
     }
 
@@ -112,7 +112,7 @@ int audio_init(audio_handle_t* handle, char const* backend_type, char const* out
     ret = audio_backend_get_by_name(backend_type, &((*handle)->backend));
     if (ret != 0)
     {
-        logger_log(LOG_FATAL, "audio_init: %s backend not available", backend_type);
+        logger_log(LOG_FATAL, "%s: %s backend not available", __func__, backend_type);
     }
 
     return ret;
@@ -124,7 +124,7 @@ int audio_release(audio_handle_t* handle)
 
     if (handle == 0)
     {
-        logger_log(LOG_FATAL, "audio_release: null handle pointer");
+        logger_log(LOG_FATAL, "%s: null handle pointer", __func__);
         return -EINVAL;
     }
 
@@ -144,7 +144,7 @@ int audio_set_channels(audio_handle_t handle, unsigned char const* channels, int
 
     if ((handle == 0) || (channels == 0))
     {
-        logger_log(LOG_ERROR, "audio_set_channels: handle pointer or channels buffer pointer is null");
+        logger_log(LOG_ERROR, "%s: handle pointer or channels buffer pointer is null", __func__);
         return -EINVAL;
     }
 
@@ -153,17 +153,17 @@ int audio_set_channels(audio_handle_t handle, unsigned char const* channels, int
         free(handle->channels_buffer);
     }
 
-    handle->channels_buffer = malloc(sizeof(struct VBanHeader) + VBAN_PROTOCOL_MAX_SIZE);
+    handle->channels_buffer = calloc(1, sizeof(struct VBanHeader) + VBAN_PROTOCOL_MAX_SIZE);
     if (handle->channels_buffer == 0)
     {
-        logger_log(LOG_FATAL, "audio_set_channels: could not allocate memory");
+        logger_log(LOG_FATAL, "%s: could not allocate memory", __func__);
         return -ENOMEM;
     }
 
     handle->channels = channels;
     handle->channels_size = channels_size;
 
-    logger_log(LOG_INFO, "audio_set_channels: setting up channels selection for %u channels", handle->channels_size);
+    logger_log(LOG_INFO, "%s: setting up channels selection for %u channels", __func__, handle->channels_size);
 
     return ret;
 }
@@ -181,7 +181,7 @@ int audio_process_packet(audio_handle_t handle, char const* buffer, int size)
 
     if ((handle == 0) || (buffer == 0))
     {
-        logger_log(LOG_ERROR, "audio_process_packet: handle pointer or buffer pointer is null");
+        logger_log(LOG_ERROR, "%s: handle pointer or buffer pointer is null", __func__);
         return -EINVAL;
     }
 
@@ -210,7 +210,7 @@ int audio_process_packet(audio_handle_t handle, char const* buffer, int size)
         ret = audio_extract_channels(handle, buffer, size);
         if (ret != 0)
         {
-            logger_log(LOG_ERROR, "audio_process_packet: unable to extract selected channels");
+            logger_log(LOG_ERROR, "%s: unable to extract selected channels", __func__);
             goto end;
         }
         hdr = (struct VBanHeader const*)handle->channels_buffer;
@@ -221,17 +221,17 @@ int audio_process_packet(audio_handle_t handle, char const* buffer, int size)
     sample_rate     = ((hdr->format_SR & VBAN_SR_MASK) < VBAN_SR_MAXNUMBER)
                         ? VBanSRList[(hdr->format_SR & VBAN_SR_MASK)]
                         : 0;
-    ret = handle->backend->is_fmt_supported(handle->backend, bit_resolution, nb_channels, sample_rate);
-    if (ret <= 0)
-    {
-        goto end;
-    }
-
     /** check that audio device is configured at correct format */
     if ((bit_resolution != handle->bit_resolution) 
         || (nb_channels != handle->nb_channels) 
         || (sample_rate != handle->rate))
     {
+        ret = handle->backend->is_fmt_supported(handle->backend, bit_resolution, nb_channels, sample_rate);
+        if (ret <= 0)
+        {
+            goto end;
+        }
+
         /* we have to (re-)open the device with correct format */
         ret = audio_open(handle, bit_resolution, nb_channels, sample_rate);
         if (ret < 0)
@@ -264,7 +264,7 @@ int audio_extract_channels(audio_handle_t handle, char const* buffer, size_t siz
 
     if ((handle == 0) || (buffer == 0))
     {
-        logger_log(LOG_FATAL, "audio_extract_channels: handle or buffer pointer is null");
+        logger_log(LOG_FATAL, "%s: handle or buffer pointer is null", __func__);
         return -EINVAL;
     }
 
@@ -296,7 +296,7 @@ int audio_open(audio_handle_t handle, enum VBanBitResolution bit_resolution, uns
 
     if (handle == 0)
     {
-        logger_log(LOG_FATAL, "audio_open: handle pointer is null");
+        logger_log(LOG_FATAL, "%s: handle pointer is null", __func__);
         return -EINVAL;
     }
 

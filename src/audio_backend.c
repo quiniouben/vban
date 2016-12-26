@@ -38,16 +38,22 @@ int audio_backend_get_by_name(char const* name, audio_backend_handle_t* backend)
 {
     size_t index;
 
+    if (name[0] == '\0')
+    {
+        logger_log(LOG_INFO, "%s: taking default backend %s", __func__, backend_list[0].name);
+        return backend_list[0].init_function(backend);
+    }
+
     for (index = 0; index != sizeof(backend_list) / sizeof(struct backend_list_item_t); ++index)
     {
         if (!strcmp(name, backend_list[index].name))
         {
-            logger_log(LOG_DEBUG, "audio_backend_get_by_name: found backend %s", name);
+            logger_log(LOG_INFO, "%s: found backend %s", __func__, name);
             return backend_list[index].init_function(backend);
         }
     }
 
-    logger_log(LOG_ERROR, "audio_backend_get_by_name: no backend found with name %s", name);
+    logger_log(LOG_ERROR, "%s: no backend found with name %s", __func__, name);
 
     return -EINVAL;
 }

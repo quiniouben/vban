@@ -47,14 +47,14 @@ int pulseaudio_backend_init(audio_backend_handle_t* handle)
 
     if (handle == 0)
     {
-        logger_log(LOG_FATAL, "pulseaudio_backend_init: null handle pointer");
+        logger_log(LOG_FATAL, "%s: null handle pointer", __func__);
         return -EINVAL;
     }
 
-    pulseaudio_backend = (struct pulseaudio_backend_t*)malloc(sizeof(struct pulseaudio_backend_t));
+    pulseaudio_backend = calloc(1, sizeof(struct pulseaudio_backend_t));
     if (pulseaudio_backend == 0)
     {
-        logger_log(LOG_FATAL, "pulseaudio_backend_init: could not allocate memory");
+        logger_log(LOG_FATAL, "%s: could not allocate memory", __func__);
         return -ENOMEM;
     }
 
@@ -99,7 +99,7 @@ int pulseaudio_open(audio_backend_handle_t handle, char const* output_name, enum
 
     if (handle == 0)
     {
-        logger_log(LOG_FATAL, "pulseaudio_open: handle pointer is null");
+        logger_log(LOG_FATAL, "%s: handle pointer is null", __func__);
         return -EINVAL;
     }
 
@@ -120,7 +120,7 @@ int pulseaudio_close(audio_backend_handle_t handle)
 
     if (handle == 0)
     {
-        logger_log(LOG_FATAL, "pulseaudio_close: handle pointer is null");
+        logger_log(LOG_FATAL, "%s: handle pointer is null", __func__);
         return -EINVAL;
     }
 
@@ -144,20 +144,20 @@ int pulseaudio_write(audio_backend_handle_t handle, char const* data, size_t nb_
 
     if ((handle == 0) || (data == 0))
     {
-        logger_log(LOG_ERROR, "pulseaudio_write: handle or data pointer is null");
+        logger_log(LOG_ERROR, "%s: handle or data pointer is null", __func__);
         return -EINVAL;
     }
 
     if (pulseaudio_backend->pulseaudio_handle == 0)
     {
-        logger_log(LOG_ERROR, "pulseaudio_write: device not open");
+        logger_log(LOG_ERROR, "%s: device not open", __func__);
         return -ENODEV;
     }
 
     ret = pa_simple_write(pulseaudio_backend->pulseaudio_handle, data, nb_sample * pulseaudio_backend->nb_sample_to_size, &error);
     if (ret < 0)
     {
-        logger_log(LOG_ERROR, "pulseaudio_write: pa_simple_write failed: %s", pa_strerror(error));
+        logger_log(LOG_ERROR, "%s: pa_simple_write failed: %s", __func__, pa_strerror(error));
     }
 
     return ret;

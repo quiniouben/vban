@@ -35,13 +35,15 @@ Usage
 
 Invoking vban_receptor without any parameter will give hints on how to use it :
 
+Usage: vban_receptor [OPTIONS]...
+
 	-i, --ipaddress=IP      : MANDATORY. ipaddress to get stream from
 	-p, --port=PORT         : MANDATORY. port to listen to
 	-s, --streamname=NAME   : MANDATORY. streamname to play
-	-b, --backend=TYPE      : audio backend to use. possible values: alsa and pulseaudio. default is alsa
+	-b, --backend=TYPE      : audio backend to use. possible values: alsa, pulseaudio, jack and pipe (EXPERIMENTAL). default is first in this list that is actually compiled
 	-q, --quality=ID        : network quality indicator from 0 (low latency) to 4. default is 1
 	-c, --channels=LIST     : channels from the stream to use. LIST is of form x,y,z,... default is to forward the stream as it is
-	-o, --output=NAME       : Alsa output device name, as given by "aplay -L" output. using backend's default by default
+	-o, --output=NAME       : Output device (server for jack backend) name , (as given by "aplay -L" output for alsa). using backend's default by default. not used for jack or pipe
 	-d, --debug=LEVEL       : Log level, from 0 (FATAL) to 4 (DEBUG). default is 1 (ERROR)
 	-h, --help              : display this message
 

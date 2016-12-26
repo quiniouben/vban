@@ -27,7 +27,7 @@
 #include "audio_backend.h"
 #include "logger.h"
 
-#define VBAN_RECEPTOR_VERSION   "v0.8.0"
+#define VBAN_RECEPTOR_VERSION   "v0.8.5"
 #define MAIN_IP_ADDRESS_SIZE    32
 
 struct config_t
@@ -62,10 +62,10 @@ void usage()
     printf("-i, --ipaddress=IP      : MANDATORY. ipaddress to get stream from\n");
     printf("-p, --port=PORT         : MANDATORY. port to listen to\n");
     printf("-s, --streamname=NAME   : MANDATORY. streamname to play\n");
-    printf("-b, --backend=TYPE      : audio backend to use. possible values: alsa, pulseaudio, jack and pipe (EXPERIMENTAL). default is alsa\n");
+    printf("-b, --backend=TYPE      : audio backend to use. possible values: alsa, pulseaudio, jack and pipe (EXPERIMENTAL). default is first in this list that is actually compiled\n");
     printf("-q, --quality=ID        : network quality indicator from 0 (low latency) to 4. default is 1\n");
     printf("-c, --channels=LIST     : channels from the stream to use. LIST is of form x,y,z,... default is to forward the stream as it is\n");
-    printf("-o, --output=NAME       : Output device (server for jack backend) name , (as given by \"aplay -L\" output for alsa). using backend's default by default\n");
+    printf("-o, --output=NAME       : Output device (server for jack backend) name , (as given by \"aplay -L\" output for alsa). using backend's default by default. not used for jack or pipe\n");
     printf("-d, --debug=LEVEL       : Log level, from 0 (FATAL) to 4 (DEBUG). default is 1 (ERROR)\n");
     printf("-h, --help              : display this message\n\n");
 }
@@ -83,7 +83,7 @@ int parse_channel_list(unsigned char* channels, char* args)
 
         if ((chan > VBAN_CHANNELS_MAX_NB) || (chan < 1))
         {
-            logger_log(LOG_ERROR, "parse_channel_list: invalid channel id %u, stop parsing", chan);
+            logger_log(LOG_ERROR, "%s: invalid channel id %u, stop parsing", __func__, chan);
             break;
         }
 
@@ -230,7 +230,7 @@ int process_packet(struct main_t* main_s, int size, char const* ipfrom)
             break;
 
         default:
-            logger_log(LOG_ERROR, "process_packet: packet with unknown protocol");
+            logger_log(LOG_ERROR, "%s: packet with unknown protocol", __func__);
             ret = -EINVAL;
             break;
     }

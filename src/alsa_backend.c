@@ -48,14 +48,14 @@ int alsa_backend_init(audio_backend_handle_t* handle)
 
     if (handle == 0)
     {
-        logger_log(LOG_FATAL, "alsa_backend_init: null handle pointer");
+        logger_log(LOG_FATAL, "%s: null handle pointer", __func__);
         return -EINVAL;
     }
 
-    alsa_backend = (struct alsa_backend_t*)malloc(sizeof(struct alsa_backend_t));
+    alsa_backend = calloc(1, sizeof(struct alsa_backend_t));
     if (alsa_backend == 0)
     {
-        logger_log(LOG_FATAL, "alsa_backend_init: could not allocate memory");
+        logger_log(LOG_FATAL, "%s: could not allocate memory", __func__);
         return -ENOMEM;
     }
 
@@ -83,7 +83,7 @@ int alsa_open(audio_backend_handle_t handle, char const* output_name, enum VBanB
 
     if (handle == 0)
     {
-        logger_log(LOG_FATAL, "alsa_open: handle pointer is null");
+        logger_log(LOG_FATAL, "%s: handle pointer is null", __func__);
         return -EINVAL;
     }
 
@@ -91,12 +91,12 @@ int alsa_open(audio_backend_handle_t handle, char const* output_name, enum VBanB
     ret = snd_pcm_open(&alsa_backend->alsa_handle, (output_name[0] == '\0') ? ALSA_OUTPUT_NAME_DEFAULT : output_name, SND_PCM_STREAM_PLAYBACK, 0);
     if (ret < 0)
     {
-        logger_log(LOG_FATAL, "alsa_open: open error: %s", snd_strerror(ret));
+        logger_log(LOG_FATAL, "%s: open error: %s", __func__, snd_strerror(ret));
         alsa_backend->alsa_handle = 0;
         return ret;
     }
 
-    logger_log(LOG_DEBUG, "alsa_open: snd_pcm_open");
+    logger_log(LOG_DEBUG, "%s: snd_pcm_open", __func__);
 
     ret = snd_pcm_set_params(alsa_backend->alsa_handle,
                                 vban_to_alsa_format(bit_resolution),
@@ -108,7 +108,7 @@ int alsa_open(audio_backend_handle_t handle, char const* output_name, enum VBanB
 
     if (ret < 0)
     {
-        logger_log(LOG_ERROR, "alsa_open: set_params error: %s", snd_strerror(ret));
+        logger_log(LOG_ERROR, "%s: set_params error: %s", __func__, snd_strerror(ret));
         alsa_close(handle);
         return ret;
     }
@@ -116,7 +116,7 @@ int alsa_open(audio_backend_handle_t handle, char const* output_name, enum VBanB
     ret = snd_pcm_prepare(alsa_backend->alsa_handle);
     if (ret < 0)
     {
-        logger_log(LOG_ERROR, "alsa_open: prepare error: %s", snd_strerror(ret));
+        logger_log(LOG_ERROR, "%s: prepare error: %s", __func__, snd_strerror(ret));
         alsa_close(handle);
         return ret;
     }
@@ -131,7 +131,7 @@ int alsa_close(audio_backend_handle_t handle)
 
     if (handle == 0)
     {
-        logger_log(LOG_FATAL, "alsa_close: handle pointer is null");
+        logger_log(LOG_FATAL, "%s: handle pointer is null", __func__);
         return -EINVAL;
     }
 
@@ -154,29 +154,29 @@ int alsa_write(audio_backend_handle_t handle, char const* data, size_t nb_sample
 
     if ((handle == 0) || (data == 0))
     {
-        logger_log(LOG_ERROR, "alsa_write: handle or data pointer is null");
+        logger_log(LOG_ERROR, "%s: handle or data pointer is null", __func__);
         return -EINVAL;
     }
 
     if (alsa_backend->alsa_handle == 0)
     {
-        logger_log(LOG_ERROR, "alsa_write: device not open");
+        logger_log(LOG_ERROR, "%s: device not open", __func__);
         return -ENODEV;
     }
     
     ret = snd_pcm_writei(alsa_backend->alsa_handle, data, nb_sample);
     if (ret < 0)
     {
-        logger_log(LOG_ERROR, "alsa_write: snd_pcm_writei failed: %s", snd_strerror(ret));
+        logger_log(LOG_ERROR, "%s: snd_pcm_writei failed: %s", __func__, snd_strerror(ret));
         ret = snd_pcm_recover(alsa_backend->alsa_handle, ret, 0);
         if (ret < 0)
         {
-            logger_log(LOG_ERROR, "alsa_write: snd_pcm_writei failed: %s", snd_strerror(ret));
+            logger_log(LOG_ERROR, "%s: snd_pcm_writei failed: %s", __func__, snd_strerror(ret));
         }
     }
     else if (ret > 0 && ret < nb_sample)
     {
-        logger_log(LOG_ERROR, "alsa_write: short write (expected %lu, wrote %i)", nb_sample, ret);
+        logger_log(LOG_ERROR, "%s: short write (expected %lu, wrote %i)", __func__, nb_sample, ret);
     }
 
     return ret;
