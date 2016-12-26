@@ -21,13 +21,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "audio_backend.h"
-#include "pipe_backend.h"
-#if ALSA
-#include "alsa_backend.h"
-#endif
-#if PULSEAUDIO
-#include "pulseaudio_backend.h"
-#endif
 #include "logger.h"
 
 #define AUDIO_DEVICE        "default"
@@ -90,7 +83,7 @@ size_t computeSize(unsigned char quality)
     return nnn;
 }
 
-int audio_init(audio_handle_t* handle, enum audio_backend_type type, char const* output_name, unsigned char quality)
+int audio_init(audio_handle_t* handle, char const* backend_type, char const* output_name, unsigned char quality)
 {
     int ret = 0;
 
@@ -116,33 +109,10 @@ int audio_init(audio_handle_t* handle, enum audio_backend_type type, char const*
     (*handle)->buffer_size = computeSize(quality);
     (*handle)->output_name = output_name;
     
-    /* I prefer factories, but well, I don't see more than 5 possible backends */
-    switch (type)
+    ret = audio_backend_get_by_name(backend_type, &((*handle)->backend));
+    if (ret != 0)
     {
-        case AUDIO_BACKEND_ALSA:
-            #if ALSA
-            ret = alsa_backend_init(&((*handle)->backend));
-            #else
-            logger_log(LOG_FATAL, "audio_init: alsa backend not compiled");
-            ret = -EINVAL;
-            #endif
-            break;
-
-        case AUDIO_BACKEND_PULSEAUDIO:
-            #if PULSEAUDIO
-            ret = pulseaudio_backend_init(&((*handle)->backend));
-            #else
-            logger_log(LOG_FATAL, "audio_init: pulseaudio backend not compiled");
-            ret = -EINVAL;
-            #endif
-            break;
-
-	case AUDIO_BACKEND_PIPE:
-	    ret = pipe_backend_init(&((*handle)->backend));
-	    break;
-
-        default:
-            break;
+        logger_log(LOG_FATAL, "audio_init: %s backend not available", backend_type);
     }
 
     return ret;

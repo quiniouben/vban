@@ -24,6 +24,7 @@
 #include "vban.h"
 #include "socket.h"
 #include "audio.h"
+#include "audio_backend.h"
 #include "logger.h"
 
 #define VBAN_RECEPTOR_VERSION   "v0.8.0"
@@ -35,7 +36,7 @@ struct config_t
     unsigned short          port;
     char                    stream_name[VBAN_STREAM_NAME_SIZE];
     unsigned char           quality;
-    int                     audio_backend_type;
+    char                    audio_backend_type[AUDIO_BACKEND_NAME_SIZE];
     char                    audio_output_name[AUDIO_OUTPUT_NAME_SIZE];
     unsigned char           audio_channels[VBAN_CHANNELS_MAX_NB];
     int                     audio_channels_nb;
@@ -61,32 +62,12 @@ void usage()
     printf("-i, --ipaddress=IP      : MANDATORY. ipaddress to get stream from\n");
     printf("-p, --port=PORT         : MANDATORY. port to listen to\n");
     printf("-s, --streamname=NAME   : MANDATORY. streamname to play\n");
-    printf("-b, --backend=TYPE      : audio backend to use. possible values: alsa, pipe (EXPERIMENTAL) and pulseaudio. default is alsa\n");
+    printf("-b, --backend=TYPE      : audio backend to use. possible values: alsa, pulseaudio, jack and pipe (EXPERIMENTAL). default is alsa\n");
     printf("-q, --quality=ID        : network quality indicator from 0 (low latency) to 4. default is 1\n");
     printf("-c, --channels=LIST     : channels from the stream to use. LIST is of form x,y,z,... default is to forward the stream as it is\n");
-    printf("-o, --output=NAME       : Alsa output device name, as given by \"aplay -L\" output. using backend's default by default\n");
+    printf("-o, --output=NAME       : Output device (server for jack backend) name , (as given by \"aplay -L\" output for alsa). using backend's default by default\n");
     printf("-d, --debug=LEVEL       : Log level, from 0 (FATAL) to 4 (DEBUG). default is 1 (ERROR)\n");
     printf("-h, --help              : display this message\n\n");
-}
-
-void parse_audio_backend_type(int* type, char const* args)
-{
-    if (!strcmp(args, "alsa"))
-    {
-        *type = AUDIO_BACKEND_ALSA;
-    }
-    else if (!strcmp(args, "pulseaudio"))
-    {
-        *type = AUDIO_BACKEND_PULSEAUDIO;
-    }
-    else if(!strcmp(args, "pipe"))
-    {
-        *type = AUDIO_BACKEND_PIPE;
-    }
-    else
-    {
-        *type = -1;
-    }
 }
 
 int parse_channel_list(unsigned char* channels, char* args)
@@ -153,7 +134,7 @@ int get_options(struct config_t* config, int argc, char* const* argv)
                 break;
 
             case 'b':
-                parse_audio_backend_type(&config->audio_backend_type, optarg);
+                strncpy(config->audio_backend_type, optarg, AUDIO_BACKEND_NAME_SIZE);
 
             case 'q':
                 config->quality = atoi(optarg);
