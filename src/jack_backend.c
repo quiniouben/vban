@@ -1,21 +1,20 @@
 #include "jack_backend.h"
 #include <jack/jack.h>
+#include <jack/ringbuffer.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stddef.h>
 #include <string.h>
 #include "logger.h"
 
-#define NB_BUFFERS  8
+#define NB_BUFFERS  7
 
 struct jack_backend_t
 {
     struct audio_backend_t  parent;
     jack_client_t*          jack_client;
     jack_port_t*            ports[VBAN_CHANNELS_MAX_NB];
-    char*                   buffer;
-    char const*             rd_ptr;
-    char*                   wr_ptr;
+    jack_ringbuffer_t*      ring_buffer;
     size_t                  buffer_size;
     enum VBanBitResolution  bit_resolution;
     unsigned int            nb_channels;
@@ -175,18 +174,11 @@ int jack_open(audio_backend_handle_t handle, char const* output_name, enum VBanB
     }
 
     jack_buffer_size            = jack_get_buffer_size(jack_backend->jack_client);
-    jack_backend->buffer_size   = ((buffer_size > jack_buffer_size) ? buffer_size : jack_buffer_size) * NB_BUFFERS;
-    jack_backend->buffer        = calloc(1, jack_backend->buffer_size);
-    if (jack_backend->buffer == 0)
-    {
-        logger_log(LOG_ERROR, "%s: memory allocation failed", __func__);
-        return -ENOMEM;
-    }
+    buffer_size                 = ((buffer_size > jack_buffer_size) ? buffer_size : jack_buffer_size) * NB_BUFFERS;
+    jack_backend->nb_channels   = nb_channels;
+    jack_backend->bit_resolution= bit_resolution;
 
-    jack_backend->rd_ptr            = jack_backend->buffer;
-    jack_backend->wr_ptr            = jack_backend->buffer + (jack_backend->buffer_size / 2);
-    jack_backend->nb_channels       = nb_channels;
-    jack_backend->bit_resolution    = bit_resolution;
+    jack_backend->ring_buffer   = jack_ringbuffer_create(buffer_size);
 
     ret = jack_set_process_callback(jack_backend->jack_client, jack_process_cb, jack_backend);
     if (ret)
@@ -232,7 +224,11 @@ int jack_close(audio_backend_handle_t handle)
         logger_log(LOG_FATAL, "%s: jack_client_close failed with error %d", __func__);
     }
 
-    free(jack_backend->buffer);
+    if (jack_backend->ring_buffer != 0)
+    {
+        jack_ringbuffer_free(jack_backend->ring_buffer);
+    }
+
     jack_backend->jack_client = 0;
     memset(jack_backend->ports, 0, VBAN_CHANNELS_MAX_NB);
 
@@ -244,7 +240,6 @@ int jack_write(audio_backend_handle_t handle, char const* data, size_t nb_sample
     int ret = 0;
     struct jack_backend_t* const jack_backend = (struct jack_backend_t*)handle;
     size_t incoming_size = 0;
-    ptrdiff_t xtra_size = 0;
 
     logger_log(LOG_DEBUG, "%s", __func__);
 
@@ -261,22 +256,14 @@ int jack_write(audio_backend_handle_t handle, char const* data, size_t nb_sample
     }
 
     incoming_size = (VBanBitResolutionSize[jack_backend->bit_resolution] * jack_backend->nb_channels * nb_sample);
-    xtra_size = (jack_backend->wr_ptr + incoming_size) - (jack_backend->buffer + jack_backend->buffer_size);
-    if (xtra_size > 0)
+
+    if (jack_ringbuffer_write_space(jack_backend->ring_buffer) < incoming_size)
     {
-        memcpy(jack_backend->wr_ptr, data, incoming_size - xtra_size);
-        jack_backend->wr_ptr = jack_backend->buffer;
-        memcpy(jack_backend->wr_ptr, data + (incoming_size - xtra_size), xtra_size);
-        jack_backend->wr_ptr += xtra_size;
+        logger_log(LOG_WARNING, "%s: short write", __func__);
+        return 0;
     }
-    else
-    {
-        memcpy(jack_backend->wr_ptr, data, incoming_size);
-        if (jack_backend->active)
-        {
-            jack_backend->wr_ptr += incoming_size;
-        }
-    }
+    
+    jack_ringbuffer_write(jack_backend->ring_buffer, data, incoming_size);
 
     return ret;
 }
@@ -286,7 +273,10 @@ int jack_process_cb(jack_nframes_t nframes, void* arg)
     struct jack_backend_t* const jack_backend = (struct jack_backend_t*)arg;
     size_t channel;
     size_t sample;
+    jack_ringbuffer_data_t rb_data[2];
     static jack_default_audio_sample_t* buffers[VBAN_CHANNELS_MAX_NB];
+    char const* ptr;
+    size_t len;
 
     if (arg == 0)
     {
@@ -303,19 +293,46 @@ int jack_process_cb(jack_nframes_t nframes, void* arg)
         buffers[channel] = (jack_default_audio_sample_t*)jack_port_get_buffer(jack_backend->ports[channel], nframes);
     }
 
+    jack_ringbuffer_get_read_vector(jack_backend->ring_buffer, rb_data);
+
+    if ((rb_data[0].len == 0) && (rb_data[1].len == 0))
+    {
+        logger_log(LOG_WARNING, "%s: no data available to read", __func__);
+        return 0;
+    }
+
+    ptr = rb_data[0].buf;
+    len = 0;
     for (sample = 0; sample != nframes; ++sample)
     {
         for (channel = 0; channel != jack_backend->nb_channels; ++channel)
         {
-            buffers[channel][sample] = jack_convert_sample(jack_backend->rd_ptr, jack_backend->bit_resolution);
-            jack_backend->rd_ptr += VBanBitResolutionSize[jack_backend->bit_resolution];
-            if (jack_backend->rd_ptr >= (jack_backend->buffer + jack_backend->buffer_size))
+            if (len == rb_data[0].len)
             {
-                jack_backend->rd_ptr = jack_backend->buffer;
+                if (rb_data[1].len != 0)
+                {
+                    ptr = rb_data[1].buf;
+                }
+                else
+                {
+                    logger_log(LOG_WARNING, "%s: short read", __func__);
+                    goto end;
+                }
             }
-        }
+            else if (len == (rb_data[0].len + rb_data[1].len))
+            {
+                logger_log(LOG_WARNING, "%s: short read", __func__);
+                goto end;
+            }
 
+            buffers[channel][sample] = jack_convert_sample(ptr, jack_backend->bit_resolution);
+            ptr += VBanBitResolutionSize[jack_backend->bit_resolution];
+            len += VBanBitResolutionSize[jack_backend->bit_resolution];
+        }
     }
+
+end:
+    jack_ringbuffer_read_advance(jack_backend->ring_buffer, len);
 
     return 0;
 }
