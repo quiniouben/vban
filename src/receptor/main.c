@@ -21,11 +21,11 @@
 #include <string.h>
 #include <signal.h>
 #include <getopt.h>
-#include "vban.h"
-#include "socket.h"
-#include "audio.h"
-#include "audio_backend.h"
-#include "logger.h"
+#include "vban/vban.h"
+#include "net/socket.h"
+#include "audio/audio.h"
+#include "audio/audio_backend.h"
+#include "util/logger.h"
 
 #define VBAN_RECEPTOR_VERSION   "v0.8.6"
 #define MAIN_IP_ADDRESS_SIZE    32

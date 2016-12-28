@@ -1,4 +1,6 @@
 # Let's define some things here
+AUTOMAKE_OPTIONS = subdir-objects
+
 AM_CFLAGS = -std=c99 -pedantic -Wall -Wno-multichar -O2
 AM_LDFLAGS = 
 
@@ -17,17 +19,30 @@ AM_LDFLAGS += -ljack
 AM_CFLAGS += -DJACK
 endif
 
-bin_PROGRAMS = vban_receptor
-vban_receptor_SOURCES = main.c audio.h audio.c socket.h socket.c vban.h logger.h logger.c audio_backend.h audio_backend.c pipe_backend.c pipe_backend.h file_backend.c file_backend.h
+bin_PROGRAMS = vban_receptor vban_source
+vban_receptor_SOURCES = receptor/main.c \
+						audio/audio.h audio/audio.c \
+						audio/audio_backend.h audio/audio_backend.c audio/pipe_backend.c audio/pipe_backend.h file_backend.c file_backend.h \
+						net/socket.h net/socket.c \
+						vban/vban.h util/logger.h util/logger.c
+
+vban_source_SOURCES = source/main.c \
+						audio/audio.h audio/audio.c \
+						audio/audio_backend.h audio/audio_backend.c audio/pipe_backend.c audio/pipe_backend.h file_backend.c file_backend.h \
+						net/socket.h net/socket.c \
+						vban/vban.h util/logger.h util/logger.c
 
 if ALSA
-vban_receptor_SOURCES += alsa_backend.h alsa_backend.c 
+vban_receptor_SOURCES += audio/alsa_backend.h audio/alsa_backend.c 
+vban_source_SOURCES += audio/alsa_backend.h audio/alsa_backend.c 
 endif
 
 if PULSEAUDIO
-vban_receptor_SOURCES +=pulseaudio_backend.h pulseaudio_backend.c
+vban_receptor_SOURCES += audio/pulseaudio_backend.h audio/pulseaudio_backend.c
+vban_source_SOURCES += audio/pulseaudio_backend.h audio/pulseaudio_backend.c
 endif
 
 if JACK
-vban_receptor_SOURCES +=jack_backend.h jack_backend.c
+vban_receptor_SOURCES += audio/jack_backend.h audio/jack_backend.c
+vban_source_SOURCES += audio/jack_backend.h audio/jack_backend.c
 endif

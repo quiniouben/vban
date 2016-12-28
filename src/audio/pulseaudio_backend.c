@@ -2,7 +2,7 @@
 #include <pulse/simple.h>
 #include <pulse/error.h>
 #include <errno.h>
-#include "logger.h"
+#include "util/logger.h"
 
 struct pulseaudio_backend_t
 {

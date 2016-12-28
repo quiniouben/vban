@@ -2,7 +2,7 @@
 #define __AUDIO_BACKEND_H__
 
 #include <stdlib.h>
-#include "vban.h"
+#include "vban/vban.h"
 
 #define AUDIO_BACKEND_NAME_SIZE     32
 

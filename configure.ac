@@ -4,7 +4,7 @@
 AC_PREREQ([2.69])
 AC_INIT([vban_receptor], [v0.8.6], [quiniouben@yahoo.fr])
 AM_INIT_AUTOMAKE
-AC_CONFIG_SRCDIR([src/vban.h])
+AC_CONFIG_SRCDIR([src/vban/vban.h])
 
 # Checks for programs.
 AC_PROG_CC
