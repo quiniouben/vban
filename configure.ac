@@ -72,8 +72,4 @@ AM_COND_IF([JACK],
 	[:]
 )
 
-# check that at least one backend is compiled
-AM_CONDITIONAL([HAVE_BACKEND], [test x$pulseaudio = xtrue] || [test x$alsa = xtrue] || [test x$jack = xtrue])
-AM_COND_IF([HAVE_BACKEND],[:], [AC_MSG_ERROR(No audio backend compiled)])
-
 AC_OUTPUT(Makefile src/Makefile)
