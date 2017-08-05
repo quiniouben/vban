@@ -40,32 +40,6 @@ static int file_open(audio_backend_handle_t handle, char const* output_name, enu
 static int file_close(audio_backend_handle_t handle);
 static int file_write(audio_backend_handle_t handle, char const* data, size_t nb_sample);
 
-unsigned int vban_sample_length(enum VBanBitResolution bit_resolution, unsigned int nb_channels)
-{
-    switch (bit_resolution)
-    {
-        case VBAN_BITFMT_8_INT:
-            return 1 * nb_channels;
-
-        case VBAN_BITFMT_16_INT:
-            return 2 * nb_channels;
-
-        case VBAN_BITFMT_24_INT:
-            return 3 * nb_channels;
-
-        case VBAN_BITFMT_32_INT:
-        case VBAN_BITFMT_32_FLOAT:
-            return 4 * nb_channels;
-
-        case VBAN_BITFMT_64_FLOAT:
-            return 8 * nb_channels;
-
-        default:
-            return 0;
-    }
-
-}
-
 int file_backend_init(audio_backend_handle_t* handle)
 {
     struct file_backend_t* file_backend = 0;
@@ -123,7 +97,7 @@ int file_open(audio_backend_handle_t handle, char const* output_name, enum VBanB
         return -errno;
     }
 
-    file_backend->sampleSize=vban_sample_length(bit_resolution, nb_channels);
+    file_backend->sampleSize=VBanBitResolutionSize[bit_resolution] * nb_channels;
     
     return 0;
 }
