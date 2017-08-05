@@ -4,6 +4,7 @@
 #include "logger.h"
 
 #include "pipe_backend.h"
+#include "file_backend.h"
 #if ALSA
 #include "alsa_backend.h"
 #endif
@@ -31,7 +32,8 @@ static struct backend_list_item_t const backend_list[] =
     #if JACK
     { JACK_BACKEND_NAME, jack_backend_init },
     #endif
-    { PIPE_BACKEND_NAME, pipe_backend_init }
+    { PIPE_BACKEND_NAME, pipe_backend_init },
+    { FILE_BACKEND_NAME, file_backend_init }
 };
 
 int audio_backend_get_by_name(char const* name, audio_backend_handle_t* backend)

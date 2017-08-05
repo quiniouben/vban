@@ -18,7 +18,7 @@ AM_CFLAGS += -DJACK
 endif
 
 bin_PROGRAMS = vban_receptor
-vban_receptor_SOURCES = main.c audio.h audio.c socket.h socket.c vban.h logger.h logger.c audio_backend.h audio_backend.c pipe_backend.c pipe_backend.h
+vban_receptor_SOURCES = main.c audio.h audio.c socket.h socket.c vban.h logger.h logger.c audio_backend.h audio_backend.c pipe_backend.c pipe_backend.h file_backend.c file_backend.h
 
 if ALSA
 vban_receptor_SOURCES += alsa_backend.h alsa_backend.c 

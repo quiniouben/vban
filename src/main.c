@@ -62,7 +62,7 @@ void usage()
     printf("-i, --ipaddress=IP      : MANDATORY. ipaddress to get stream from\n");
     printf("-p, --port=PORT         : MANDATORY. port to listen to\n");
     printf("-s, --streamname=NAME   : MANDATORY. streamname to play\n");
-    printf("-b, --backend=TYPE      : audio backend to use. possible values: alsa, pulseaudio, jack and pipe (EXPERIMENTAL). default is first in this list that is actually compiled\n");
+    printf("-b, --backend=TYPE      : audio backend to use. possible values: alsa, pulseaudio, jack, file (defaults to stdout) and pipe (EXPERIMENTAL). default is first in this list that is actually compiled\n");
     printf("-q, --quality=ID        : network quality indicator from 0 (low latency) to 4. default is 1\n");
     printf("-c, --channels=LIST     : channels from the stream to use. LIST is of form x,y,z,... default is to forward the stream as it is\n");
     printf("-o, --output=NAME       : Output device (server for jack backend) name , (as given by \"aplay -L\" output for alsa). using backend's default by default. not used for jack or pipe\n");
