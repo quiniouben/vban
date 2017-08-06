@@ -1,7 +1,7 @@
 # Let's define some things here
 AUTOMAKE_OPTIONS = subdir-objects
 
-AM_CFLAGS = -std=c99 -pedantic -Wall -Wno-multichar -O2
+AM_CFLAGS = -std=c99 -pedantic -Wall -Wno-multichar -O2 -I.
 AM_LDFLAGS = 
 
 if ALSA
