@@ -1,0 +1,69 @@
+#!/usr/bin/perl
+
+#  vban_url_receptor - A wrapper for URL driven VBAN requests
+#  Copyright (C) 2017 Markus Buschhoff <info@buschhoff-medien.de>
+#
+#  This is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  vban_url_receptor is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with vban_receptor.  If not, see <http://www.gnu.org/licenses/>.
+
+#
+#  This lightweight wrapper calls vban_receptor with parameters parsed from
+#  a URL scheme vban://host:port/stream (with defaults if partly omitted).
+#
+#  It intentionally does not use URI::URL, and URL parsing is definately
+#  not RFC 3986 conformant.
+#
+
+$default_host = '127.0.0.1';
+$default_port = 6980;
+$default_stream = 'Stream1';
+$default_options = '-b file';
+
+sub usage_info() {
+    print STDERR "Usage: $0 URL [options]\n\n";
+    print STDERR "URL: vban://[host[:port]][/streamname]\n";
+    print STDERR "Example: vban://192.168.0.1:6980/Stream1\n";
+    print STDERR "Further options are passed directly to vban_receptor.\n";
+    print STDERR "If no options are given, '-b file' is used as default (output to stdout).\n\n";
+    exit -1;
+}
+
+# Got URL?
+if($#ARGV < 0) {
+  usage_info();
+}
+
+# Parse URL
+$url=shift(@ARGV);
+if($url =~ /^vban\:\/\/(.*?)?(:(\d*))?(\/(.*))?$/ )
+{
+  $host = $1 ? $1 : $default_host;
+  $port = $3 ? $3 : $default_port;
+  $stream = $5 ? $5 : $default_stream;
+}
+else { usage_info(); }
+
+# More command line args?
+if($#ARGV < 0) {
+  $options = $default_options;
+}
+else {
+  foreach(@ARGV) {
+    $options .= $_ . ' ';
+  }
+}
+
+# Start vban_receptor
+$vban_cmd = "vban_receptor -i $host -p $port -s $stream $options";
+print STDERR "Starting: $vban_cmd\n";
+system($vban_cmd);
