@@ -22,13 +22,15 @@ endif
 bin_PROGRAMS = vban_receptor vban_source
 vban_receptor_SOURCES = receptor/main.c \
 						audio/audio.h audio/audio.c \
-						audio/audio_backend.h audio/audio_backend.c audio/pipe_backend.c audio/pipe_backend.h file_backend.c file_backend.h \
+						audio/audio_backend.h audio/audio_backend.c \
+						audio/pipe_backend.c audio/pipe_backend.h audio/file_backend.c audio/file_backend.h \
 						net/socket.h net/socket.c \
 						vban/vban.h util/logger.h util/logger.c
 
 vban_source_SOURCES = source/main.c \
 						audio/audio.h audio/audio.c \
-						audio/audio_backend.h audio/audio_backend.c audio/pipe_backend.c audio/pipe_backend.h file_backend.c file_backend.h \
+						audio/audio_backend.h audio/audio_backend.c \
+						audio/pipe_backend.c audio/pipe_backend.h audio/file_backend.c audio/file_backend.h \
 						net/socket.h net/socket.c \
 						vban/vban.h util/logger.h util/logger.c
 
