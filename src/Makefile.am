@@ -1,5 +1,5 @@
 # Let's define some things here
-AM_CFLAGS = -std=c99 -pedantic -Wall -Wno-multichar
+AM_CFLAGS = -std=c99 -pedantic -Wall -Wno-multichar -O2
 AM_LDFLAGS = 
 
 if ALSA
