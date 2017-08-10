@@ -5,7 +5,7 @@ vban - Linux command-line VBAN tools
 
 vban project is an open-source implementation of VBAN protocol.
 VBAN is a simple audio over UDP protocol proposed by VB-Audio, see [VBAN Audio webpage](http://vb-audio.pagesperso-orange.fr/Voicemeeter/vban.htm).
-It is composed of several command-line tools allowing to stream audio coming from audio backend interfaces to VBAN stream (vban_source) or playout incoming VBAN stream to audio backend interfaces (vban_receptor)
+It is composed of several command-line tools allowing to stream audio coming from audio backend interfaces to VBAN stream (vban_emitter) or playout incoming VBAN stream to audio backend interfaces (vban_receptor)
 Up to now, Alsa, PulseAudio and Jack audio backends have been implemented. A fifo (pipe) output is also existing, to allow chaining command-line tools, its status is experimental.
 
 Compilation and installation
@@ -36,7 +36,7 @@ By default, vban tools will be compiled with all 3 audio backends. To disable th
 Usage
 -----
 
-Invoking vban_receptor or vban_source without any parameter will give hints on how to use them :
+Invoking vban_receptor or vban_emitter without any parameter will give hints on how to use them :
 
 Usage: vban_receptor [OPTIONS]...
 
@@ -50,17 +50,17 @@ Usage: vban_receptor [OPTIONS]...
 	-d, --debug=LEVEL       : Log level, from 0 (FATAL) to 4 (DEBUG). default is 1 (ERROR)
 	-h, --help              : display this message
 
-TODO: missing vban_source doc
+TODO: missing vban_emitter doc
 
 About --channels option, a bit more tips:
 * channels indexes are from 1 to 256 (as specified by VBAN specifications for vban_receptor, and well, its probably enough for any soundcard or jack configuration)
 * you can repeat channels
 * with vban_receptor, if you use in-existent channels, you will get silence but no error (as the stream may change at anytime)
-* with vban_source, if you use in-existent source channels, you will get error
+* with vban_emitter, if you use in-existent source channels, you will get error
 
 Examples:
 
 	vban_receptor -i IP -p PORT -s STREAMNAME -c1                   # keep only channel 1 and play out as mono
 	vban_receptor -i IP -p PORT -s STREAMNAME -c1,1,1,1             # keep only channel 1 and play it out on 4 output channels (given that your output device is able to do it)
 	vban_receptor -i IP -p PORT -s STREAMNAME -c2,41,125,7,1,45     # select some channels and play them out on 6 output channels (same comment)
-    vban_source -i IP -p PORT -s STREAMNAME -c1,1,1,1               # use audio source channel 1 (opening it in mono therefore, and build up a 4 channels stream with copies of the same data in all channels)
+    vban_emitter -i IP -p PORT -s STREAMNAME -c1,1,1,1               # use audio source channel 1 (opening it in mono therefore, and build up a 4 channels stream with copies of the same data in all channels)

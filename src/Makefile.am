@@ -19,7 +19,7 @@ AM_LDFLAGS += -ljack
 AM_CFLAGS += -DJACK
 endif
 
-bin_PROGRAMS = vban_receptor vban_source
+bin_PROGRAMS = vban_receptor vban_emitter
 vban_receptor_SOURCES = receptor/main.c \
 						audio/audio.h audio/audio.c \
 						audio/audio_backend.h audio/audio_backend.c \
@@ -27,7 +27,7 @@ vban_receptor_SOURCES = receptor/main.c \
 						net/socket.h net/socket.c \
 						vban/vban.h util/logger.h util/logger.c
 
-vban_source_SOURCES = source/main.c \
+vban_emitter_SOURCES = emitter/main.c \
 						audio/audio.h audio/audio.c \
 						audio/audio_backend.h audio/audio_backend.c \
 						audio/pipe_backend.c audio/pipe_backend.h audio/file_backend.c audio/file_backend.h \
@@ -36,15 +36,15 @@ vban_source_SOURCES = source/main.c \
 
 if ALSA
 vban_receptor_SOURCES += audio/alsa_backend.h audio/alsa_backend.c 
-vban_source_SOURCES += audio/alsa_backend.h audio/alsa_backend.c 
+vban_emitter_SOURCES += audio/alsa_backend.h audio/alsa_backend.c 
 endif
 
 if PULSEAUDIO
 vban_receptor_SOURCES += audio/pulseaudio_backend.h audio/pulseaudio_backend.c
-vban_source_SOURCES += audio/pulseaudio_backend.h audio/pulseaudio_backend.c
+vban_emitter_SOURCES += audio/pulseaudio_backend.h audio/pulseaudio_backend.c
 endif
 
 if JACK
 vban_receptor_SOURCES += audio/jack_backend.h audio/jack_backend.c
-vban_source_SOURCES += audio/jack_backend.h audio/jack_backend.c
+vban_emitter_SOURCES += audio/jack_backend.h audio/jack_backend.c
 endif
