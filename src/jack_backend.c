@@ -230,7 +230,7 @@ int jack_close(audio_backend_handle_t handle)
     }
 
     jack_backend->jack_client = 0;
-    memset(jack_backend->ports, 0, VBAN_CHANNELS_MAX_NB);
+    memset(jack_backend->ports, 0, VBAN_CHANNELS_MAX_NB * sizeof(jack_port_t*));
 
     return ret;
 }
