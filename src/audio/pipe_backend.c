@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include "util/logger.h"
 
-#define FIFO_FILENAME   "/tmp/vban_receptor_0"
+#define FIFO_FILENAME   "/tmp/vban_0"
 
 struct pipe_backend_t
 {

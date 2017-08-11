@@ -1,19 +1,19 @@
 /*
- *  This file is part of vban_receptor.
+ *  This file is part of vban.
  *  Copyright (c) 2015 by Benoît Quiniou <quiniouben@yahoo.fr>
  *
- *  vban_receptor is free software: you can redistribute it and/or modify
+ *  vban is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
  *
- *  vban_receptor is distributed in the hope that it will be useful,
+ *  vban is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with vban_receptor.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with vban.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <stdio.h>
@@ -57,7 +57,7 @@ void signalHandler(int signum)
 
 void usage()
 {
-    printf("\nUsage: vban_receptor [OPTIONS]...\n\n");
+    printf("\nUsage: vban [OPTIONS]...\n\n");
     printf("-i, --ipaddress=IP      : MANDATORY. ipaddress to get stream from\n");
     printf("-p, --port=PORT         : MANDATORY. port to listen to\n");
     printf("-s, --streamname=NAME   : MANDATORY. streamname to play\n");
@@ -247,7 +247,7 @@ int main(int argc, char* const* argv)
     struct main_t main_s;
     char ipfrom[SOCKET_IP_ADDRESS_SIZE];
 
-    printf("vban_receptor version %s\n\n", VBAN_RECEPTOR_VERSION);
+    printf("vban version %s\n\n", VBAN_RECEPTOR_VERSION);
 
     memset(&main_s, 0, sizeof(struct main_t));
     if (get_options(&main_s.config, argc, argv))

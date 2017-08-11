@@ -103,7 +103,7 @@ int pulseaudio_open(audio_backend_handle_t handle, char const* output_name, enum
         return -EINVAL;
     }
 
-    pulseaudio_backend->pulseaudio_handle = pa_simple_new(0, "vban_receptor", PA_STREAM_PLAYBACK, (output_name[0] == '\0') ? 0 : output_name, "", &ss, 0, &ba, &ret);
+    pulseaudio_backend->pulseaudio_handle = pa_simple_new(0, "vban", PA_STREAM_PLAYBACK, (output_name[0] == '\0') ? 0 : output_name, "", &ss, 0, &ba, &ret);
     if (pulseaudio_backend->pulseaudio_handle == 0)
     {
         logger_log(LOG_FATAL, "pulseaudio_open: open error: %s", pa_strerror(ret));

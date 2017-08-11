@@ -215,7 +215,7 @@ int main(int argc, char* const* argv)
 
     while ((ret >= 0) && MainRun)
     {
-        //XXX I chose nb_sample and not size, is it that smart ?
+        //XXX I chose nb_sample and not size, is it that smart ? NONONO
         ret = audio_read(main_s.audio, (char*)main_s.buffer + VBAN_HEADER_SIZE, VBAN_DATA_MAX_SIZE); 
         if (ret > 0)
         {
