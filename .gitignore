@@ -11,4 +11,9 @@ install-sh
 missing
 **/.deps
 **/.dirstamp
-
+*.o
+tags
+vban_emitter
+vban_receptor
+*~
+NOTES
