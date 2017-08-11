@@ -33,7 +33,9 @@ typedef struct audio_t* audio_handle_t;
 int audio_init(audio_handle_t* handle, char const* backend_type, char const* output_name, unsigned char quality);
 int audio_release(audio_handle_t* handle);
 
+int audio_open(audio_handle_t handle, enum VBanBitResolution bit_resolution, unsigned int nb_channels, unsigned int rate);
 int audio_set_channels(audio_handle_t handle, unsigned char const* channels, int channels_size);
 int audio_process_packet(audio_handle_t handle, char const* buffer, int size);
+int audio_read(audio_handle_t handle, char* buffer, size_t nb_sample);
 
 #endif /*__AUDIO_H__*/

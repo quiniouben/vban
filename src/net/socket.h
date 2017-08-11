@@ -21,15 +21,18 @@
 
 #include <stddef.h>
 
+#define SOCKET_IP_ADDRESS_SIZE    32
+
 struct socket_t;
 typedef struct socket_t* socket_handle_t;
 
 int socket_init(socket_handle_t* handle);
 int socket_release(socket_handle_t* handle);
 
-int socket_open(socket_handle_t handle, short port, unsigned int timeout);
+int socket_open(socket_handle_t handle, short port, char output);
 int socket_close(socket_handle_t handle);
 int socket_recvfrom(socket_handle_t handle, char* buffer, size_t size, char* ipfrom);
+int socket_sendto(socket_handle_t handle, char* buffer, size_t size, char* ipto);
 
 #endif /*__SOCKET_H__*/
 

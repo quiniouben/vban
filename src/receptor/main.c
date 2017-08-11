@@ -28,11 +28,10 @@
 #include "util/logger.h"
 
 #define VBAN_RECEPTOR_VERSION   "v0.8.6"
-#define MAIN_IP_ADDRESS_SIZE    32
 
 struct config_t
 {
-    char                    ip_address[MAIN_IP_ADDRESS_SIZE];
+    char                    ip_address[SOCKET_IP_ADDRESS_SIZE];
     unsigned short          port;
     char                    stream_name[VBAN_STREAM_NAME_SIZE];
     unsigned char           quality;
@@ -125,7 +124,7 @@ int get_options(struct config_t* config, int argc, char* const* argv)
         switch (c)
         {
             case 'i':
-                strncpy(config->ip_address, optarg, MAIN_IP_ADDRESS_SIZE);
+                strncpy(config->ip_address, optarg, SOCKET_IP_ADDRESS_SIZE);
                 break;
 
             case 'p':
@@ -246,7 +245,7 @@ int main(int argc, char* const* argv)
 {
     int ret = 0;
     struct main_t main_s;
-    char ipfrom[MAIN_IP_ADDRESS_SIZE];
+    char ipfrom[SOCKET_IP_ADDRESS_SIZE];
 
     printf("vban_receptor version %s\n\n", VBAN_RECEPTOR_VERSION);
 

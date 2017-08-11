@@ -24,7 +24,8 @@
 #define VBAN_HEADER_SIZE            (4 + 4 + 16 + 4)
 #define VBAN_HEADER_FOURC           'NABV'
 #define VBAN_STREAM_NAME_SIZE       16
-#define VBAN_PROTOCOL_MAX_SIZE      1472 /*XXX: specification says 1436, but VoiceMeeter Banana 2.0.2.7 uses 1472: ask vb*/
+#define VBAN_PROTOCOL_MAX_SIZE      1464
+#define VBAN_DATA_MAX_SIZE          (VBAN_PROTOCOL_MAX_SIZE - VBAN_HEADER_SIZE)
 #define VBAN_CHANNELS_MAX_NB        256
 
 struct VBanHeader
@@ -69,6 +70,8 @@ enum VBanBitResolution
     VBAN_BITFMT_32_INT,
     VBAN_BITFMT_32_FLOAT,
     VBAN_BITFMT_64_FLOAT,
+    VBAN_BITFMT_12_INT,
+    VBAN_BITFMT_10_INT,
     VBAN_BIT_RESOLUTION_MAX
 };
 

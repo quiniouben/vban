@@ -31,6 +31,7 @@
 struct socket_t
 {
     int     fd;
+    short   port;
 };
 
 int socket_init(socket_handle_t* handle)
@@ -71,7 +72,7 @@ int socket_release(socket_handle_t* handle)
     return ret;
 }
 
-int socket_open(socket_handle_t handle, short port, unsigned int timeout)
+int socket_open(socket_handle_t handle, short port, char output)
 {
     int ret = 0;
     struct sockaddr_in si_me;
@@ -92,6 +93,8 @@ int socket_open(socket_handle_t handle, short port, unsigned int timeout)
         }
     }
 
+    handle->port = port;
+
     handle->fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (handle->fd < 0)
     {
@@ -100,18 +103,21 @@ int socket_open(socket_handle_t handle, short port, unsigned int timeout)
         handle->fd = 0;
         return ret;
     }
-
-    memset(&si_me, 0, sizeof(si_me));
-    si_me.sin_family        = AF_INET;
-    si_me.sin_port          = htons(port);
-    si_me.sin_addr.s_addr   = htonl(INADDR_ANY);
-    ret = bind(handle->fd, (struct sockaddr const*)&si_me, sizeof(si_me));
-
-    if (ret < 0)
+    
+    if (output == 0)
     {
-        logger_log(LOG_ERROR, "%s: unable to bind socket", __func__);
-        socket_close(handle);
-        return errno;
+        memset(&si_me, 0, sizeof(si_me));
+        si_me.sin_family        = AF_INET;
+        si_me.sin_port          = htons(handle->port);
+        si_me.sin_addr.s_addr   = htonl(INADDR_ANY);
+        ret = bind(handle->fd, (struct sockaddr const*)&si_me, sizeof(si_me));
+
+        if (ret < 0)
+        {
+            logger_log(LOG_ERROR, "%s: unable to bind socket", __func__);
+            socket_close(handle);
+            return errno;
+        }
     }
 
     logger_log(LOG_INFO, "%s with port: %d", __func__, port);
@@ -173,7 +179,45 @@ int socket_recvfrom(socket_handle_t handle, char* buffer, size_t size, char* ipf
         return ret;
     }
 
-    strncpy(ipfrom, inet_ntoa(si_other.sin_addr), 32);
+    strncpy(ipfrom, inet_ntoa(si_other.sin_addr), SOCKET_IP_ADDRESS_SIZE);
+
+    return ret;
+}
+
+int socket_sendto(socket_handle_t handle, char* buffer, size_t size, char* ipto)
+{
+    int ret = 0;
+    struct sockaddr_in si_other;
+    socklen_t slen = sizeof(si_other);
+
+    logger_log(LOG_DEBUG, "%s invoked", __func__);
+
+    if ((handle == 0) || (buffer == 0) || (ipto == 0))
+    {
+        logger_log(LOG_ERROR, "%s: one parameter is a null pointer", __func__);
+        return -EINVAL;
+    }
+
+    if (handle->fd == 0)
+    {
+        logger_log(LOG_ERROR, "%s: socket is not open", __func__);
+        return -ENODEV;
+    }
+
+    memset(&si_other, 0, sizeof(si_other));
+    si_other.sin_family        = AF_INET;
+    si_other.sin_port          = htons(handle->port);
+    si_other.sin_addr.s_addr   = inet_addr(ipto);
+
+    ret = sendto(handle->fd, buffer, size, 0, (struct sockaddr *) &si_other, slen);
+    if (ret < 0)
+    {
+        if (errno != EINTR)
+        {
+            logger_log(LOG_ERROR, "%s: recvfrom error %d %s", __func__, errno, strerror(errno));
+        }
+        return ret;
+    }
 
     return ret;
 }

@@ -38,7 +38,6 @@ struct audio_t
     char*                   channels_buffer;
 };
 
-static int audio_open(audio_handle_t handle, enum VBanBitResolution bit_resolution, unsigned int nb_channels, unsigned int rate);
 static int audio_extract_channels(audio_handle_t handle, char const* buffer, size_t size);
 static size_t computeSize(unsigned char quality);
 
@@ -287,6 +286,25 @@ int audio_extract_channels(audio_handle_t handle, char const* buffer, size_t siz
         }
     }
     
+    return ret;
+}
+
+int audio_read(audio_handle_t handle, char* buffer, size_t nb_sample)
+{
+    int ret = 0;
+
+    if (handle == 0)
+    {
+        logger_log(LOG_FATAL, "%s: handle pointer is null", __func__);
+        return -EINVAL;
+    }
+
+    //XXX checkt that everythign is ready,
+    // open the audio if not open ?
+
+    ret = handle->backend->read(handle->backend, buffer, nb_sample /*XXX*/);
+    //XXX
+
     return ret;
 }
 
