@@ -28,8 +28,6 @@ enum LogLevel
     LOG_DEBUG
 };
 
-extern enum LogLevel LoggerOutputLevel;
-
 void logger_set_output_level(enum LogLevel level);
 void logger_log(enum LogLevel msgLevel, const char* format, ... );
 
