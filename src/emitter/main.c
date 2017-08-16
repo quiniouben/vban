@@ -56,12 +56,14 @@ void usage()
     printf("-i, --ipaddress=IP      : MANDATORY. ipaddress to send stream to\n");
     printf("-p, --port=PORT         : MANDATORY. port to use\n");
     printf("-s, --streamname=NAME   : MANDATORY. streamname to use\n");
-    printf("-b, --backend=TYPE      : audio backend to use. %s\n", audio_backend_get_help());
+//XXX    printf("-b, --backend=TYPE      : audio backend to use. %s\n", audio_backend_get_help());
+    printf("-b, --backend=TYPE      : TEMPORARY DISABLED. audio backend to use. Only alsa backend is working at this time\n");
     printf("-d, --device=NAME       : Audio device name. This is file name for file backend, server name for jack backend, device for alsa, stream_name for pulseaudio.\n");
     printf("-r, --rate=VALUE        : Audio device sample rate. default 44100\n");
     printf("-n, --nbchannels=VALUE  : Audio device number of channels. default 2\n");
     printf("-f, --format=VALUE      : Audio device sample format (see below). default is 16I (16bits integer)\n");
-    printf("-c, --channels=LIST     : channels from the audio device to use. LIST is of form x,y,z,... default is to forward the stream as it is\n");
+//XXX    printf("-c, --channels=LIST     : channels from the audio device to use. LIST is of form x,y,z,... default is to forward the stream as it is\n");
+    printf("-c, --channels=LIST     : TEMPORARY DISABLED.\n");
 
     printf("-l, --loglevel=LEVEL    : Log level, from 0 (FATAL) to 4 (DEBUG). default is 1 (ERROR)\n");
     printf("-h, --help              : display this message\n\n");
@@ -118,8 +120,8 @@ int get_options(struct config_t* config, int argc, char* const* argv)
                 strncpy(config->stream_name, optarg, VBAN_STREAM_NAME_SIZE);
                 break;
 
-            case 'b':
-                strncpy(config->audio.backend_name, optarg, AUDIO_BACKEND_NAME_SIZE);
+/*XXX            case 'b':
+                strncpy(config->audio.backend_name, optarg, AUDIO_BACKEND_NAME_SIZE);*/
 
             case 'd':
                 strncpy(config->audio.device_name, optarg, AUDIO_DEVICE_NAME_SIZE);
@@ -137,9 +139,9 @@ int get_options(struct config_t* config, int argc, char* const* argv)
                 config->stream.bit_fmt = stream_parse_bit_fmt(optarg);
                 break;
 
-            case 'c':
+/*XXX            case 'c':
                 ret = audio_parse_map_config(&config->map, optarg);
-                break;
+                break;*/
 
             case 'l':
                 logger_set_output_level(atoi(optarg));

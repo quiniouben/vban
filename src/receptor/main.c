@@ -58,7 +58,8 @@ void usage()
     printf("-s, --streamname=NAME   : MANDATORY. streamname to play\n");
     printf("-b, --backend=TYPE      : audio backend to use. %s\n", audio_backend_get_help());
     printf("-q, --quality=ID        : network quality indicator from 0 (low latency) to 4. default is 1\n");
-    printf("-c, --channels=LIST     : channels from the stream to use. LIST is of form x,y,z,... default is to forward the stream as it is\n");
+//XXX    printf("-c, --channels=LIST     : channels from the stream to use. LIST is of form x,y,z,... default is to forward the stream as it is\n");
+    printf("-c, --channels=LIST     : TEMPORARY DISABLED\n");
     printf("-o, --output=NAME       : DEPRECATED. please use -d\n");
     printf("-d, --device=NAME       : Audio device name. This is file name for file backend, server name for jack backend, device for alsa, stream_name for pulseaudio.\n");
     printf("-l, --loglevel=LEVEL    : Log level, from 0 (FATAL) to 4 (DEBUG). default is 1 (ERROR)\n");
@@ -155,9 +156,9 @@ int get_options(struct config_t* config, int argc, char* const* argv)
                 quality = atoi(optarg);
                 break;
 
-            case 'c':
+/*XXX            case 'c':
                 ret = audio_parse_map_config(&config->map, optarg);
-                break;
+                break;*/
 
             case 'o':
             case 'd':
