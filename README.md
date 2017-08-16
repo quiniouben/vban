@@ -45,7 +45,7 @@ Invoking vban_receptor or vban_emitter without any parameter will give hints on 
 	-s, --streamname=NAME   : MANDATORY. streamname to play
 	-b, --backend=TYPE      : audio backend to use. Available audio backends are: alsa pulseaudio jack pipe file . default is alsa.
 	-q, --quality=ID        : network quality indicator from 0 (low latency) to 4. default is 1
-	-c, --channels=LIST     : TEMPORARY DISABLED
+    -c, --channels=LIST     : channels from the stream to use. LIST is of form x,y,z,... default is to forward the stream as it is
 	-o, --output=NAME       : DEPRECATED. please use -d
 	-d, --device=NAME       : Audio device name. This is file name for file backend, server name for jack backend, device for alsa, stream_name for pulseaudio.
 	-l, --loglevel=LEVEL    : Log level, from 0 (FATAL) to 4 (DEBUG). default is 1 (ERROR)
@@ -61,20 +61,16 @@ Invoking vban_receptor or vban_emitter without any parameter will give hints on 
 	-r, --rate=VALUE        : Audio device sample rate. default 44100
 	-n, --nbchannels=VALUE  : Audio device number of channels. default 2
 	-f, --format=VALUE      : Audio device sample format (see below). default is 16I (16bits integer)
-	-c, --channels=LIST     : TEMPORARY DISABLED.
+    -c, --channels=LIST     : channels from the stream to use. LIST is of form x,y,z,... default is to forward the stream as it is
 	-l, --loglevel=LEVEL    : Log level, from 0 (FATAL) to 4 (DEBUG). default is 1 (ERROR)
 	-h, --help              : display this message
 
 	Recognized bit format are 8I, 16I, 24I, 32I, 32F, 64F, 12I, 10I
 
-Temporarily disabled
---------------------
-
 About --channels option, a bit more tips:
-* channels indexes are from 1 to 256 (as specified by VBAN specifications for vban_receptor, and well, its probably enough for any soundcard or jack configuration)
+* channels indexes are from 1 to 256 (as specified by VBAN specifications, and well, its probably enough for any soundcard or jack configuration)
 * you can repeat channels
-* with vban_receptor, if you use in-existent channels, you will get silence but no error (as the stream may change at anytime)
-* with vban_emitter, if you use in-existent source channels, you will get error
+* if you use in-existent channels, you will get silence but no error
 
 Examples:
 

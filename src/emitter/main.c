@@ -62,8 +62,7 @@ void usage()
     printf("-r, --rate=VALUE        : Audio device sample rate. default 44100\n");
     printf("-n, --nbchannels=VALUE  : Audio device number of channels. default 2\n");
     printf("-f, --format=VALUE      : Audio device sample format (see below). default is 16I (16bits integer)\n");
-//XXX    printf("-c, --channels=LIST     : channels from the audio device to use. LIST is of form x,y,z,... default is to forward the stream as it is\n");
-    printf("-c, --channels=LIST     : TEMPORARY DISABLED.\n");
+    printf("-c, --channels=LIST     : channels from the audio device to use. LIST is of form x,y,z,... default is to forward the stream as it is\n");
 
     printf("-l, --loglevel=LEVEL    : Log level, from 0 (FATAL) to 4 (DEBUG). default is 1 (ERROR)\n");
     printf("-h, --help              : display this message\n\n");
@@ -139,9 +138,9 @@ int get_options(struct config_t* config, int argc, char* const* argv)
                 config->stream.bit_fmt = stream_parse_bit_fmt(optarg);
                 break;
 
-/*XXX            case 'c':
+            case 'c':
                 ret = audio_parse_map_config(&config->map, optarg);
-                break;*/
+                break;
 
             case 'l':
                 logger_set_output_level(atoi(optarg));

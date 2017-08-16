@@ -37,7 +37,7 @@ struct audio_t
 };
 
 static void get_device_config(audio_handle_t handle, struct stream_config_t* device_config);
-static int audio_map_channels(audio_handle_t handle, char const* buffer, size_t size);
+static int audio_map_channels(audio_handle_t handle, char* buffer, size_t size, char reverse);
 
 #define AUDIO_MAP_OUTPUT_SIZE(_handle, _size) ((_handle->map.nb_channels != 0) ? ((_size * _handle->map.nb_channels) / (_handle->stream.nb_channels)) : _size)
 #define AUDIO_MAP_REVERSE_INPUT_SIZE(_handle, _size) ((_handle->map.nb_channels != 0) ? ((_size * _handle->stream.nb_channels) / (_handle->map.nb_channels)) : _size)
@@ -197,7 +197,7 @@ int audio_get_stream_config(audio_handle_t handle, struct stream_config_t* confi
 
     *config = handle->stream;
 
-    if ((handle->config.direction == AUDIO_OUT) && (handle->map.nb_channels != 0))
+    if ((handle->config.direction == AUDIO_IN) && (handle->map.nb_channels != 0))
     {
         config->nb_channels = handle->map.nb_channels;
     }
@@ -234,7 +234,8 @@ int audio_write(audio_handle_t handle, char const* buffer, size_t size)
         return -EINVAL;
     }
 
-    ret = audio_map_channels(handle, buffer, size);
+    // the cast here is armless, just easier than doing some "overload" of audio_map_channels
+    ret = audio_map_channels(handle, (char *)buffer, size, 0);
     if (ret < 0)
     {
         logger_log(LOG_ERROR, "%s: audio_map_channels failed", __func__);
@@ -246,6 +247,8 @@ int audio_write(audio_handle_t handle, char const* buffer, size_t size)
 
 int audio_read(audio_handle_t handle, char* buffer, size_t size)
 {
+    int ret = 0;
+
     logger_log(LOG_DEBUG, "%s invoked with size %d", __func__, size);
 
     if ((handle == 0) || (buffer == 0))
@@ -254,16 +257,28 @@ int audio_read(audio_handle_t handle, char* buffer, size_t size)
         return -EINVAL;
     }
 
-    //XXX map !
+    size = handle->backend->read(handle->backend, AUDIO_MAP_REVERSE_INPUT_PTR(handle, buffer), AUDIO_MAP_REVERSE_INPUT_SIZE(handle, size));
+    if (size < 0)
+    {
+        logger_log(LOG_ERROR, "%s: backend read failed", __func__);
+        return size;
+    }
 
-    return handle->backend->read(handle->backend, buffer, size);
+    ret = audio_map_channels(handle, buffer, size, 1);
+    if (ret < 0)
+    {
+        logger_log(LOG_ERROR, "%s: audio_map_channels failed", __func__);
+        return ret;
+    }
+
+    return AUDIO_MAP_OUTPUT_SIZE(handle, size);
 }
 
-int audio_map_channels(audio_handle_t handle, char const* buffer, size_t size)
+int audio_map_channels(audio_handle_t handle, char* buffer, size_t size, char reverse)
 {
     int ret = 0;
     size_t const sample_size = VBanBitResolutionSize[handle->stream.bit_fmt];
-    size_t frame_size, dest_frame_size;
+    size_t stream_frame_size, map_frame_size;
     char* dest_ptr;
     char const* orig_ptr;
 
@@ -282,20 +297,20 @@ int audio_map_channels(audio_handle_t handle, char const* buffer, size_t size)
         return 0;
     }
 
-    frame_size = sample_size * handle->stream.nb_channels;
-    dest_frame_size = sample_size * handle->map.nb_channels;
+    stream_frame_size = sample_size * handle->stream.nb_channels;
+    map_frame_size = sample_size * handle->map.nb_channels;
 
-    memset(handle->buffer, 0, VBAN_DATA_MAX_SIZE);
+    memset((reverse == 1) ? buffer : handle->buffer, 0, size);
 
     /* TODO: can this be optimized ? */
     for (chan = 0; chan != handle->map.nb_channels; ++chan)
     {
         if (handle->map.channels[chan] < handle->stream.nb_channels)
         {
-            for (frame = 0; frame != (size / frame_size); ++frame)
+            for (frame = 0; frame != (size / stream_frame_size); ++frame)
             {
-                dest_ptr = handle->buffer + (frame * dest_frame_size) + (chan * sample_size);
-                orig_ptr = buffer + (frame * frame_size) + (handle->map.channels[chan] * sample_size);
+                orig_ptr = ((reverse == 1) ? handle->buffer : buffer) + (frame * stream_frame_size) + (handle->map.channels[chan] * sample_size);
+                dest_ptr = ((reverse == 1) ? buffer : handle->buffer) + (frame * map_frame_size) + (chan * sample_size);
                 memcpy(dest_ptr, orig_ptr, sample_size);
             }
         }
