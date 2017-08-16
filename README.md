@@ -38,7 +38,7 @@ Usage
 
 Invoking vban_receptor or vban_emitter without any parameter will give hints on how to use them :
 
-	Usage: vban [OPTIONS]...
+	Usage: vban_receptor [OPTIONS]...
 
 	-i, --ipaddress=IP      : MANDATORY. ipaddress to get stream from
 	-p, --port=PORT         : MANDATORY. port to listen to

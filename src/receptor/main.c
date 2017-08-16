@@ -52,7 +52,7 @@ void signalHandler(int signum)
 
 void usage()
 {
-    printf("\nUsage: vban [OPTIONS]...\n\n");
+    printf("\nUsage: vban_receptor [OPTIONS]...\n\n");
     printf("-i, --ipaddress=IP      : MANDATORY. ipaddress to get stream from\n");
     printf("-p, --port=PORT         : MANDATORY. port to listen to\n");
     printf("-s, --streamname=NAME   : MANDATORY. streamname to play\n");
