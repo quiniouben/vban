@@ -2,19 +2,17 @@
 #include <pulse/simple.h>
 #include <pulse/error.h>
 #include <errno.h>
-#include "util/logger.h"
+#include "common/logger.h"
 
 struct pulseaudio_backend_t
 {
     struct audio_backend_t  parent;
     pa_simple*              pulseaudio_handle;
-    unsigned int            nb_sample_to_size;
 };
 
-static int pulseaudio_is_fmt_supported(audio_backend_handle_t handle, enum VBanBitResolution bit_resolution, unsigned int nb_channels, unsigned int rate);
-static int pulseaudio_open(audio_backend_handle_t handle, char const* output_name, enum VBanBitResolution bit_resolution, unsigned int nb_channels, unsigned int rate, size_t buffer_size);
+static int pulseaudio_open(audio_backend_handle_t handle, char const* output_name, enum audio_direction direction, size_t buffer_size, struct stream_config_t const* config);
 static int pulseaudio_close(audio_backend_handle_t handle);
-static int pulseaudio_write(audio_backend_handle_t handle, char const* data, size_t nb_sample);
+static int pulseaudio_write(audio_backend_handle_t handle, char const* data, size_t size);
 
 static enum pa_sample_format vban_to_pulseaudio_format(enum VBanBitResolution bit_resolution)
 {
@@ -58,7 +56,6 @@ int pulseaudio_backend_init(audio_backend_handle_t* handle)
         return -ENOMEM;
     }
 
-    pulseaudio_backend->parent.is_fmt_supported   = pulseaudio_is_fmt_supported;
     pulseaudio_backend->parent.open               = pulseaudio_open;
     pulseaudio_backend->parent.close              = pulseaudio_close;
     pulseaudio_backend->parent.write              = pulseaudio_write;
@@ -69,21 +66,15 @@ int pulseaudio_backend_init(audio_backend_handle_t* handle)
     
 }
 
-int pulseaudio_is_fmt_supported(audio_backend_handle_t handle, enum VBanBitResolution bit_resolution, unsigned int nb_channels, unsigned int rate)
-{
-    /*XXX*/
-    return 1;
-}
-
-int pulseaudio_open(audio_backend_handle_t handle, char const* output_name, enum VBanBitResolution bit_resolution, unsigned int nb_channels, unsigned int rate, size_t buffer_size)
+int pulseaudio_open(audio_backend_handle_t handle, char const* output_name, enum audio_direction direction, size_t buffer_size, struct stream_config_t const* config)
 {
     int ret;
     struct pulseaudio_backend_t* const pulseaudio_backend = (struct pulseaudio_backend_t*)handle;
     pa_sample_spec const ss = 
     {
-        .format     = vban_to_pulseaudio_format(bit_resolution),
-        .rate       = rate,
-        .channels   = nb_channels,
+        .format     = vban_to_pulseaudio_format(config->bit_fmt),
+        .rate       = config->sample_rate,
+        .channels   = config->nb_channels,
     };
 
     pa_buffer_attr const ba =
@@ -94,8 +85,6 @@ int pulseaudio_open(audio_backend_handle_t handle, char const* output_name, enum
         .minreq     = (unsigned int)(-1),
         .fragsize   = (unsigned int)(-1)
     };
-
-    pulseaudio_backend->nb_sample_to_size = VBanBitResolutionSize[bit_resolution] * nb_channels;
 
     if (handle == 0)
     {
@@ -136,7 +125,7 @@ int pulseaudio_close(audio_backend_handle_t handle)
     return ret;
 }
 
-int pulseaudio_write(audio_backend_handle_t handle, char const* data, size_t nb_sample)
+int pulseaudio_write(audio_backend_handle_t handle, char const* data, size_t size)
 {
     int ret = 0;
     int error;
@@ -154,12 +143,12 @@ int pulseaudio_write(audio_backend_handle_t handle, char const* data, size_t nb_
         return -ENODEV;
     }
 
-    ret = pa_simple_write(pulseaudio_backend->pulseaudio_handle, data, nb_sample * pulseaudio_backend->nb_sample_to_size, &error);
+    ret = pa_simple_write(pulseaudio_backend->pulseaudio_handle, data, size, &error);
     if (ret < 0)
     {
         logger_log(LOG_ERROR, "%s: pa_simple_write failed: %s", __func__, pa_strerror(error));
     }
 
-    return ret;
+    return (ret < 0) ? ret : size;
 }
 

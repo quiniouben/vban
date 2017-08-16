@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <string.h>
-#include "util/logger.h"
+#include "common/logger.h"
 
 #define NB_BUFFERS  7
 
@@ -16,19 +16,18 @@ struct jack_backend_t
     jack_port_t*            ports[VBAN_CHANNELS_MAX_NB];
     jack_ringbuffer_t*      ring_buffer;
     size_t                  buffer_size;
-    enum VBanBitResolution  bit_resolution;
+    enum VBanBitResolution  bit_fmt;
     unsigned int            nb_channels;
     int                     active;
 };
 
-static int jack_is_fmt_supported(audio_backend_handle_t handle, enum VBanBitResolution bit_resolution, unsigned int nb_channels, unsigned int rate);
-static int jack_open(audio_backend_handle_t handle, char const* output_name, enum VBanBitResolution bit_resolution, unsigned int nb_channels, unsigned int rate, size_t buffer_size);
+static int jack_open(audio_backend_handle_t handle, char const* output_name, enum audio_direction direction, size_t buffer_size, struct stream_config_t const* config);
 static int jack_close(audio_backend_handle_t handle);
 static int jack_write(audio_backend_handle_t handle, char const* data, size_t nb_sample);
 
 static int jack_process_cb(jack_nframes_t nframes, void* arg);
 static void jack_shutdown_cb(void* arg);
-static jack_default_audio_sample_t jack_convert_sample(char const* ptr, enum VBanBitResolution bit_resolution);
+static jack_default_audio_sample_t jack_convert_sample(char const* ptr, enum VBanBitResolution bit_fmt);
 static int jack_start(struct jack_backend_t* jack_backend)
 {
     int ret = 0;
@@ -107,7 +106,6 @@ int jack_backend_init(audio_backend_handle_t* handle)
         return -ENOMEM;
     }
 
-    jack_backend->parent.is_fmt_supported   = jack_is_fmt_supported;
     jack_backend->parent.open               = jack_open;
     jack_backend->parent.close              = jack_close;
     jack_backend->parent.write              = jack_write;
@@ -117,39 +115,7 @@ int jack_backend_init(audio_backend_handle_t* handle)
     return 0;
 }
 
-int jack_is_fmt_supported(audio_backend_handle_t handle, enum VBanBitResolution bit_resolution, unsigned int nb_channels, unsigned int rate)
-{
-    int jack_sample_rate;
-    struct jack_backend_t* const jack_backend = (struct jack_backend_t*)handle;
-
-    if (handle == 0)
-    {
-        logger_log(LOG_ERROR, "%s: handle is null", __func__);
-        return -EINVAL;
-    }
-
-    if (jack_backend->jack_client == 0)
-    {
-        jack_backend->jack_client = jack_client_open("vban", 0, 0);
-        if (jack_backend->jack_client == 0)
-        {
-            logger_log(LOG_ERROR, "%s: could not open jack client", __func__);
-            return -ENODEV;
-        }
-    }
-
-    jack_sample_rate = jack_get_sample_rate(jack_backend->jack_client);
-    if (jack_sample_rate != rate)
-    {
-        logger_log(LOG_ERROR, "%s: jack server sample rate and requested sample rate differs.", __func__);
-        return 0;
-    }
-
-    // we don't support 64 bit float
-    return (bit_resolution != VBAN_BITFMT_64_FLOAT);
-}
-
-int jack_open(audio_backend_handle_t handle, char const* output_name, enum VBanBitResolution bit_resolution, unsigned int nb_channels, unsigned int rate, size_t buffer_size)
+int jack_open(audio_backend_handle_t handle, char const* output_name, enum audio_direction direction, size_t buffer_size, struct stream_config_t const* config)
 {
     int ret;
     struct jack_backend_t* const jack_backend = (struct jack_backend_t*)handle;
@@ -174,9 +140,10 @@ int jack_open(audio_backend_handle_t handle, char const* output_name, enum VBanB
     }
 
     jack_buffer_size            = jack_get_buffer_size(jack_backend->jack_client);
+    // well, we should calculate something with bit_fmt ratio to 32bit...
     buffer_size                 = ((buffer_size > jack_buffer_size) ? buffer_size : jack_buffer_size) * NB_BUFFERS;
-    jack_backend->nb_channels   = nb_channels;
-    jack_backend->bit_resolution= bit_resolution;
+    jack_backend->nb_channels   = config->nb_channels;
+    jack_backend->bit_fmt= config->bit_fmt;
 
     jack_backend->ring_buffer   = jack_ringbuffer_create(buffer_size);
 
@@ -235,11 +202,10 @@ int jack_close(audio_backend_handle_t handle)
     return ret;
 }
 
-int jack_write(audio_backend_handle_t handle, char const* data, size_t nb_sample)
+int jack_write(audio_backend_handle_t handle, char const* data, size_t size)
 {
     int ret = 0;
     struct jack_backend_t* const jack_backend = (struct jack_backend_t*)handle;
-    size_t incoming_size = 0;
 
     logger_log(LOG_DEBUG, "%s", __func__);
 
@@ -255,17 +221,15 @@ int jack_write(audio_backend_handle_t handle, char const* data, size_t nb_sample
         return -ENODEV;
     }
 
-    incoming_size = (VBanBitResolutionSize[jack_backend->bit_resolution] * jack_backend->nb_channels * nb_sample);
-
-    if (jack_ringbuffer_write_space(jack_backend->ring_buffer) < incoming_size)
+    if (jack_ringbuffer_write_space(jack_backend->ring_buffer) < size)
     {
         logger_log(LOG_WARNING, "%s: short write", __func__);
         return 0;
     }
     
-    jack_ringbuffer_write(jack_backend->ring_buffer, data, incoming_size);
+    jack_ringbuffer_write(jack_backend->ring_buffer, data, size);
 
-    return ret;
+    return (ret < 0) ? ret : size;
 }
 
 int jack_process_cb(jack_nframes_t nframes, void* arg)
@@ -325,9 +289,9 @@ int jack_process_cb(jack_nframes_t nframes, void* arg)
                 goto end;
             }
 
-            buffers[channel][sample] = jack_convert_sample(ptr, jack_backend->bit_resolution);
-            ptr += VBanBitResolutionSize[jack_backend->bit_resolution];
-            len += VBanBitResolutionSize[jack_backend->bit_resolution];
+            buffers[channel][sample] = jack_convert_sample(ptr, jack_backend->bit_fmt);
+            ptr += VBanBitResolutionSize[jack_backend->bit_fmt];
+            len += VBanBitResolutionSize[jack_backend->bit_fmt];
         }
     }
 
@@ -352,11 +316,11 @@ void jack_shutdown_cb(void* arg)
     /*XXX how to notify upper layer that we are done ?*/
 }
 
-inline jack_default_audio_sample_t jack_convert_sample(char const* ptr, enum VBanBitResolution bit_resolution)
+inline jack_default_audio_sample_t jack_convert_sample(char const* ptr, enum VBanBitResolution bit_fmt)
 {
     int value;
 
-    switch (bit_resolution)
+    switch (bit_fmt)
     {
         case VBAN_BITFMT_8_INT:
             return (float)*((int8_t const*)ptr);

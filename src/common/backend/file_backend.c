@@ -26,19 +26,17 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
-#include "util/logger.h"
+#include "common/logger.h"
 
 struct file_backend_t
 {
     struct audio_backend_t  parent;
-    unsigned int sampleSize;
     int	fd;
 };
 
-static int file_is_fmt_supported(audio_backend_handle_t handle, enum VBanBitResolution bit_resolution, unsigned int nb_channels, unsigned int rate);
-static int file_open(audio_backend_handle_t handle, char const* output_name, enum VBanBitResolution bit_resolution, unsigned int nb_channels, unsigned int rate, size_t buffer_size);
+static int file_open(audio_backend_handle_t handle, char const* output_name, enum audio_direction direction, size_t buffer_size, struct stream_config_t const* config);
 static int file_close(audio_backend_handle_t handle);
-static int file_write(audio_backend_handle_t handle, char const* data, size_t nb_sample);
+static int file_write(audio_backend_handle_t handle, char const* data, size_t size);
 
 int file_backend_init(audio_backend_handle_t* handle)
 {
@@ -57,7 +55,6 @@ int file_backend_init(audio_backend_handle_t* handle)
         return -ENOMEM;
     }
 
-    file_backend->parent.is_fmt_supported   = file_is_fmt_supported;
     file_backend->parent.open               = file_open;
     file_backend->parent.close              = file_close;
     file_backend->parent.write              = file_write;
@@ -74,7 +71,7 @@ int file_is_fmt_supported(audio_backend_handle_t handle, enum VBanBitResolution 
     return 1;
 }
 
-int file_open(audio_backend_handle_t handle, char const* output_name, enum VBanBitResolution bit_resolution, unsigned int nb_channels, unsigned int rate, size_t buffer_size)
+int file_open(audio_backend_handle_t handle, char const* output_name, enum audio_direction direction, size_t buffer_size, struct stream_config_t const* config)
 {
     struct file_backend_t* const file_backend = (struct file_backend_t*)handle;
 
@@ -96,8 +93,6 @@ int file_open(audio_backend_handle_t handle, char const* output_name, enum VBanB
 	perror("open");
         return -errno;
     }
-
-    file_backend->sampleSize=VBanBitResolutionSize[bit_resolution] * nb_channels;
     
     return 0;
 }
@@ -125,7 +120,7 @@ int file_close(audio_backend_handle_t handle)
     return ret;
 }
 
-int file_write(audio_backend_handle_t handle, char const* data, size_t nb_sample)
+int file_write(audio_backend_handle_t handle, char const* data, size_t size)
 {
     int ret = 0;
     struct file_backend_t* const file_backend = (struct file_backend_t*)handle;
@@ -136,7 +131,7 @@ int file_write(audio_backend_handle_t handle, char const* data, size_t nb_sample
         return -EINVAL;
     }
 
-    ret = write(file_backend->fd, (const void *)data, nb_sample * file_backend->sampleSize);
+    ret = write(file_backend->fd, (const void *)data, size);
     if (ret < 0)
     {
         logger_log(LOG_ERROR, "%s:", __func__);

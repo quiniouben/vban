@@ -26,19 +26,24 @@
 #include <arpa/inet.h>
 #include <sys/poll.h>
 #include <unistd.h>
-#include "util/logger.h"
+#include "common/logger.h"
 
 struct socket_t
 {
-    int     fd;
-    short   port;
+    struct socket_config_t  config;
+    int                     fd;
 };
 
-int socket_init(socket_handle_t* handle)
+static int socket_open(socket_handle_t handle);
+static int socket_close(socket_handle_t handle);
+
+int socket_init(socket_handle_t* handle, struct socket_config_t const* config)
 {
-    if (handle == 0)
+    int ret = 0;
+
+    if ((handle == 0) || (config == 0))
     {
-        logger_log(LOG_FATAL, "%s: null handle pointer", __func__);
+        logger_log(LOG_FATAL, "%s: null handle or config pointer", __func__);
         return -EINVAL;
     }
 
@@ -49,7 +54,15 @@ int socket_init(socket_handle_t* handle)
         return -ENOMEM;
     }
 
-    return 0;
+    (*handle)->config = *config;
+
+    ret = socket_open(*handle);
+    if (ret != 0)
+    {
+        socket_release(handle);
+    }
+
+    return ret;
 }
 
 int socket_release(socket_handle_t* handle)
@@ -72,7 +85,7 @@ int socket_release(socket_handle_t* handle)
     return ret;
 }
 
-int socket_open(socket_handle_t handle, short port, char output)
+int socket_open(socket_handle_t handle)
 {
     int ret = 0;
     struct sockaddr_in si_me;
@@ -82,6 +95,8 @@ int socket_open(socket_handle_t handle, short port, char output)
         logger_log(LOG_FATAL, "%s: one parameter is a null pointer", __func__);
         return -EINVAL;
     }
+
+    logger_log(LOG_INFO, "%s: opening socket with port %d", __func__, handle->config.port);
 
     if (handle->fd != 0)
     {
@@ -93,8 +108,6 @@ int socket_open(socket_handle_t handle, short port, char output)
         }
     }
 
-    handle->port = port;
-
     handle->fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (handle->fd < 0)
     {
@@ -104,23 +117,20 @@ int socket_open(socket_handle_t handle, short port, char output)
         return ret;
     }
     
-    if (output == 0)
-    {
-        memset(&si_me, 0, sizeof(si_me));
-        si_me.sin_family        = AF_INET;
-        si_me.sin_port          = htons(handle->port);
-        si_me.sin_addr.s_addr   = htonl(INADDR_ANY);
-        ret = bind(handle->fd, (struct sockaddr const*)&si_me, sizeof(si_me));
+    memset(&si_me, 0, sizeof(si_me));
+    si_me.sin_family        = AF_INET;
+    si_me.sin_port          = htons(handle->config.port);
+    si_me.sin_addr.s_addr   = htonl(INADDR_ANY);
+    ret = bind(handle->fd, (struct sockaddr const*)&si_me, sizeof(si_me));
 
-        if (ret < 0)
-        {
-            logger_log(LOG_ERROR, "%s: unable to bind socket", __func__);
-            socket_close(handle);
-            return errno;
-        }
+    if (ret < 0)
+    {
+        logger_log(LOG_ERROR, "%s: unable to bind socket", __func__);
+        socket_close(handle);
+        return errno;
     }
 
-    logger_log(LOG_INFO, "%s with port: %d", __func__, port);
+    logger_log(LOG_INFO, "%s with port: %d", __func__, handle->config.port);
 
     return 0;
 }
@@ -134,6 +144,8 @@ int socket_close(socket_handle_t handle)
         logger_log(LOG_FATAL, "%s: handle parameter is a null pointer", __func__);
         return -EINVAL;
     }
+
+    logger_log(LOG_INFO, "%s: closing socket with port %d", __func__, handle->config.port);
 
     if (handle->fd != 0)
     {
@@ -149,7 +161,7 @@ int socket_close(socket_handle_t handle)
     return 0;
 }
 
-int socket_recvfrom(socket_handle_t handle, char* buffer, size_t size, char* ipfrom)
+int socket_read(socket_handle_t handle, char* buffer, size_t size)
 {
     int ret = 0;
     struct sockaddr_in si_other;
@@ -157,11 +169,13 @@ int socket_recvfrom(socket_handle_t handle, char* buffer, size_t size, char* ipf
 
     logger_log(LOG_DEBUG, "%s invoked", __func__);
 
-    if ((handle == 0) || (buffer == 0) || (ipfrom == 0))
+    if ((handle == 0) || (buffer == 0))
     {
         logger_log(LOG_ERROR, "%s: one parameter is a null pointer", __func__);
         return -EINVAL;
     }
+
+    logger_log(LOG_DEBUG, "%s ip %s", __func__, handle->config.ip_address);
 
     if (handle->fd == 0)
     {
@@ -169,6 +183,7 @@ int socket_recvfrom(socket_handle_t handle, char* buffer, size_t size, char* ipf
         return -ENODEV;
     }
 
+again:
     ret = recvfrom(handle->fd, buffer, size, 0, (struct sockaddr *) &si_other, &slen);
     if (ret < 0)
     {
@@ -179,12 +194,16 @@ int socket_recvfrom(socket_handle_t handle, char* buffer, size_t size, char* ipf
         return ret;
     }
 
-    strncpy(ipfrom, inet_ntoa(si_other.sin_addr), SOCKET_IP_ADDRESS_SIZE);
+    if (strncmp(handle->config.ip_address, inet_ntoa(si_other.sin_addr), SOCKET_IP_ADDRESS_SIZE))
+    {
+        logger_log(LOG_DEBUG, "%s: packet received from wrong ip", __func__);
+        goto again;
+    }
 
     return ret;
 }
 
-int socket_sendto(socket_handle_t handle, char* buffer, size_t size, char* ipto)
+int socket_write(socket_handle_t handle, char const* buffer, size_t size)
 {
     int ret = 0;
     struct sockaddr_in si_other;
@@ -192,7 +211,7 @@ int socket_sendto(socket_handle_t handle, char* buffer, size_t size, char* ipto)
 
     logger_log(LOG_DEBUG, "%s invoked", __func__);
 
-    if ((handle == 0) || (buffer == 0) || (ipto == 0))
+    if ((handle == 0) || (buffer == 0))
     {
         logger_log(LOG_ERROR, "%s: one parameter is a null pointer", __func__);
         return -EINVAL;
@@ -206,15 +225,15 @@ int socket_sendto(socket_handle_t handle, char* buffer, size_t size, char* ipto)
 
     memset(&si_other, 0, sizeof(si_other));
     si_other.sin_family        = AF_INET;
-    si_other.sin_port          = htons(handle->port);
-    si_other.sin_addr.s_addr   = inet_addr(ipto);
+    si_other.sin_port          = htons(handle->config.port);
+    si_other.sin_addr.s_addr   = inet_addr(handle->config.ip_address);
 
-    ret = sendto(handle->fd, buffer, size, 0, (struct sockaddr *) &si_other, slen);
+    ret = sendto(handle->fd, buffer, size, 0, (struct sockaddr*)&si_other, slen);
     if (ret < 0)
     {
         if (errno != EINTR)
         {
-            logger_log(LOG_ERROR, "%s: recvfrom error %d %s", __func__, errno, strerror(errno));
+            logger_log(LOG_ERROR, "%s: sendto error %d %s", __func__, errno, strerror(errno));
         }
         return ret;
     }

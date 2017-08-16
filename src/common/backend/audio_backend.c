@@ -1,7 +1,8 @@
 #include "audio_backend.h"
 #include <errno.h>
 #include <string.h>
-#include "util/logger.h"
+#include <stdio.h>
+#include "common/logger.h"
 
 #include "pipe_backend.h"
 #include "file_backend.h"
@@ -14,6 +15,8 @@
 #if JACK
 #include "jack_backend.h"
 #endif
+
+#define HELP_TEXT_LEN   2048
 
 struct backend_list_item_t
 {
@@ -59,3 +62,21 @@ int audio_backend_get_by_name(char const* name, audio_backend_handle_t* backend)
 
     return -EINVAL;
 }
+
+char const* audio_backend_get_help()
+{
+    static char help_text[HELP_TEXT_LEN];
+    size_t index = 0;
+    size_t offset = 0;
+
+    offset += snprintf(help_text + offset, HELP_TEXT_LEN - offset, "Available audio backends are: ");
+    for (index = 0; index < sizeof(backend_list) / sizeof(struct backend_list_item_t); ++index)
+    {
+        offset += snprintf(help_text + offset, HELP_TEXT_LEN - offset, "%s ", backend_list[index].name);
+    }
+
+    offset += snprintf(help_text + offset, HELP_TEXT_LEN - offset, ". default is %s.", backend_list[0].name);
+    
+    return help_text;
+}
+

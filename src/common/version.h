@@ -1,6 +1,6 @@
 /*
  *  This file is part of vban.
- *  Copyright (c) 2015 by Benoît Quiniou <quiniouben@yahoo.fr>
+ *  Copyright (c) 2017 by Benoît Quiniou <quiniouben@yahoo.fr>
  *
  *  vban is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,24 +15,10 @@
  *  You should have received a copy of the GNU General Public License
  *  along with vban.  If not, see <http://www.gnu.org/licenses/>.
  */
+#ifndef __VERSION_H__
+#define __VERSION_H__
 
-#ifndef __SOCKET_H__
-#define __SOCKET_H__
+#define VBAN_VERSION "2.0.0"
 
-#include <stddef.h>
-
-#define SOCKET_IP_ADDRESS_SIZE    32
-
-struct socket_t;
-typedef struct socket_t* socket_handle_t;
-
-int socket_init(socket_handle_t* handle);
-int socket_release(socket_handle_t* handle);
-
-int socket_open(socket_handle_t handle, short port, char output);
-int socket_close(socket_handle_t handle);
-int socket_recvfrom(socket_handle_t handle, char* buffer, size_t size, char* ipfrom);
-int socket_sendto(socket_handle_t handle, char* buffer, size_t size, char* ipto);
-
-#endif /*__SOCKET_H__*/
+#endif /*__VERSION_H__*/
 
