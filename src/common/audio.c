@@ -37,6 +37,12 @@ struct audio_t
 };
 
 static void get_device_config(audio_handle_t handle, struct stream_config_t* device_config);
+static int audio_map_channels(audio_handle_t handle, char const* buffer, size_t size);
+
+#define AUDIO_MAP_OUTPUT_SIZE(_handle, _size) ((_handle->map.nb_channels != 0) ? ((_size * _handle->map.nb_channels) / (_handle->stream.nb_channels)) : _size)
+#define AUDIO_MAP_REVERSE_INPUT_SIZE(_handle, _size) ((_handle->map.nb_channels != 0) ? ((_size * _handle->stream.nb_channels) / (_handle->map.nb_channels)) : _size)
+#define AUDIO_MAP_OUTPUT_PTR(_handle, _buffer) ((_handle->map.nb_channels != 0) ? _handle->buffer : _buffer)
+#define AUDIO_MAP_REVERSE_INPUT_PTR(_handle, _buffer) ((_handle->map.nb_channels != 0) ? _handle->buffer : buffer)
 
 int audio_parse_map_config(struct audio_map_config_t* map_config, char* argv)
 {
@@ -130,7 +136,7 @@ void get_device_config(audio_handle_t handle, struct stream_config_t* device_con
 {
     *device_config = handle->stream;
 
-    if ((handle->config.direction == AUDIO_IN) && (handle->map.nb_channels != 0))
+    if ((handle->config.direction == AUDIO_OUT) && (handle->map.nb_channels != 0))
     {
         device_config->nb_channels = handle->map.nb_channels;
     }
@@ -213,35 +219,13 @@ int audio_set_map_config(audio_handle_t handle, struct audio_map_config_t const*
 
     handle->map = *config;
 
-#if 0
-    size_t nb_channels;
-    nb_channels = handle->map.nb_channels;
-    // probably we don't want this, as we want to do this before starting
-    struct stream_config_t device_config;
-    if ((nb_channels != config->nb_channels) && (handle->config.direction == AUDIO_OUT))
-    {
-        ret = handle->backend->close(handle->backend);
-        if (ret < 0)
-        {
-            logger_log(LOG_ERROR, "%s: could not close backend", __func__);
-            return ret;
-        }
-
-        get_device_config(handle, &device_config);
-        ret = handle->backend->open(handle->backend, handle->config.device_name, handle->config.direction, handle->config.buffer_size, &device_config);
-        if (ret < 0)
-        {
-            memset(&handle->stream, 0, sizeof(handle->stream));
-            logger_log(LOG_ERROR, "%s: could not open backend with new config", __func__);
-            return ret;
-        }
-    }
-#endif
     return ret;
 }
 
 int audio_write(audio_handle_t handle, char const* buffer, size_t size)
 {
+    int ret = 0;
+
     logger_log(LOG_DEBUG, "%s invoked with size %d", __func__, size);
 
     if ((handle == 0) || (buffer == 0))
@@ -250,9 +234,14 @@ int audio_write(audio_handle_t handle, char const* buffer, size_t size)
         return -EINVAL;
     }
 
-    //XXX map !
+    ret = audio_map_channels(handle, buffer, size);
+    if (ret < 0)
+    {
+        logger_log(LOG_ERROR, "%s: audio_map_channels failed", __func__);
+        return ret;
+    }
 
-    return handle->backend->write(handle->backend, buffer, size);
+    return AUDIO_MAP_REVERSE_INPUT_SIZE(handle, handle->backend->write(handle->backend, AUDIO_MAP_OUTPUT_PTR(handle, buffer), AUDIO_MAP_OUTPUT_SIZE(handle, size)));
 }
 
 int audio_read(audio_handle_t handle, char* buffer, size_t size)
@@ -270,43 +259,43 @@ int audio_read(audio_handle_t handle, char* buffer, size_t size)
     return handle->backend->read(handle->backend, buffer, size);
 }
 
-#if 0
-static int audio_extract_channels(audio_handle_t handle, char const* buffer, size_t size);
-
-int audio_extract_channels(audio_handle_t handle, char const* buffer, size_t size)
+int audio_map_channels(audio_handle_t handle, char const* buffer, size_t size)
 {
     int ret = 0;
-    struct VBanHeader const* const orig_hdr = (struct VBanHeader const*)buffer;
-    char const* const orig_data = (char const*)(orig_hdr + 1);
-    struct VBanHeader* const dest_hdr = (struct VBanHeader*)handle->channels_buffer;
-    char* const dest_data = (char*)(dest_hdr + 1);
-    size_t const sample_size = VBanBitResolutionSize[(dest_hdr->format_bit & VBAN_BIT_RESOLUTION_MASK)];
+    size_t const sample_size = VBanBitResolutionSize[handle->stream.bit_fmt];
+    size_t frame_size, dest_frame_size;
     char* dest_ptr;
     char const* orig_ptr;
 
     size_t chan = 0;
-    size_t sample = 0;
+    size_t frame = 0;
 
-    if ((handle == 0) || (buffer == 0))
+    if (buffer == 0)
     {
         logger_log(LOG_FATAL, "%s: handle or buffer pointer is null", __func__);
         return -EINVAL;
     }
 
-    *dest_hdr               = *orig_hdr;
-    dest_hdr->format_nbc    = handle->channels_size - 1;
+    if (handle->map.nb_channels == 0)
+    {
+        /** nothing todo */
+        return 0;
+    }
 
-    memset(dest_data, 0, (dest_hdr->format_nbc + 1)* (dest_hdr->format_nbs + 1) * sample_size);
+    frame_size = sample_size * handle->stream.nb_channels;
+    dest_frame_size = sample_size * handle->map.nb_channels;
+
+    memset(handle->buffer, 0, VBAN_DATA_MAX_SIZE);
 
     /* TODO: can this be optimized ? */
-    for (chan = 0; chan != dest_hdr->format_nbc + 1; ++chan)
+    for (chan = 0; chan != handle->map.nb_channels; ++chan)
     {
-        if (handle->channels[chan] < (orig_hdr->format_nbc + 1))
+        if (handle->map.channels[chan] < handle->stream.nb_channels)
         {
-            for (sample = 0; sample != dest_hdr->format_nbs + 1; ++sample)
+            for (frame = 0; frame != (size / frame_size); ++frame)
             {
-                dest_ptr = dest_data + (((sample * (dest_hdr->format_nbc + 1)) + chan) * sample_size);
-                orig_ptr = orig_data + (((sample * (orig_hdr->format_nbc + 1)) + handle->channels[chan]) * sample_size);
+                dest_ptr = handle->buffer + (frame * dest_frame_size) + (chan * sample_size);
+                orig_ptr = buffer + (frame * frame_size) + (handle->map.channels[chan] * sample_size);
                 memcpy(dest_ptr, orig_ptr, sample_size);
             }
         }
@@ -315,4 +304,3 @@ int audio_extract_channels(audio_handle_t handle, char const* buffer, size_t siz
     return ret;
 }
 
-#endif
