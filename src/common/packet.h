@@ -50,19 +50,27 @@ int packet_check(char const* streamname, char const* buffer, size_t size);
 int packet_get_stream_config(char const* buffer, struct stream_config_t* stream_config);
 
 /**
- * Fill the packet withe values corresponding to stream_config
+ * Get max payload_size from packet header
+ * @param buffer pointer to packet
+ * @return size upon success, negative value otherwise
+ */
+int packet_get_max_payload_size(char const* buffer);
+
+/**
+ * Init header content.
  * @param buffer pointer to data
  * @param stream_config pointer
- * @param size size of the payload
  * @return 0 upon success, negative value otherwise
  */
-int packet_set_stream_config(char* buffer, struct stream_config_t const* stream_config, size_t size);
+int packet_init_header(char* buffer, struct stream_config_t const* stream_config, char const* streamname);
 
-/** increment the frame counter */
-#define PACKET_INCREMENT_FRAME_COUNTER(_buffer) \
-    do { \
-        ++(PACKET_HEADER_PTR(_buffer)->nuFrame); \
-    } while (0)
+/**
+ * Fill the packet withe values corresponding to stream_config
+ * @param buffer pointer to data
+ * @param payload_size size of the payload
+ * @return 0 upon success, negative value otherwise
+ */
+int packet_set_new_content(char* buffer, size_t payload_size);
 
 #endif /*__PACKET_H__*/
 

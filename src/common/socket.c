@@ -117,17 +117,20 @@ int socket_open(socket_handle_t handle)
         return ret;
     }
     
-    memset(&si_me, 0, sizeof(si_me));
-    si_me.sin_family        = AF_INET;
-    si_me.sin_port          = htons(handle->config.port);
-    si_me.sin_addr.s_addr   = htonl(INADDR_ANY);
-    ret = bind(handle->fd, (struct sockaddr const*)&si_me, sizeof(si_me));
-
-    if (ret < 0)
+    if (handle->config.direction == SOCKET_IN)
     {
-        logger_log(LOG_ERROR, "%s: unable to bind socket", __func__);
-        socket_close(handle);
-        return errno;
+        memset(&si_me, 0, sizeof(si_me));
+        si_me.sin_family        = AF_INET;
+        si_me.sin_port          = htons(handle->config.port);
+        si_me.sin_addr.s_addr   = htonl(INADDR_ANY);
+        ret = bind(handle->fd, (struct sockaddr const*)&si_me, sizeof(si_me));
+
+        if (ret < 0)
+        {
+            logger_log(LOG_ERROR, "%s: unable to bind socket", __func__);
+            socket_close(handle);
+            return errno;
+        }
     }
 
     logger_log(LOG_INFO, "%s with port: %d", __func__, handle->config.port);

@@ -180,8 +180,9 @@ int get_options(struct config_t* config, int argc, char* const* argv)
         }
     }
 
-    config->audio.direction = AUDIO_OUT;
-    config->audio.buffer_size = computeSize(quality);
+    config->audio.direction     = AUDIO_OUT;
+    config->audio.buffer_size   = computeSize(quality);
+    config->socket.direction    = SOCKET_IN;
 
     /** check if we got all arguments */
     if ((config->socket.ip_address[0] == 0)

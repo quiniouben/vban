@@ -95,6 +95,8 @@ int get_options(struct config_t* config, int argc, char* const* argv)
     config->stream.bit_fmt      = VBAN_BITFMT_16_INT;
     config->audio.buffer_size   = 1024; /*XXX Why ?*/
 
+    config->socket.direction    = SOCKET_OUT;
+
     /* yes, I assume config is not 0 */
     while (1)
     {
@@ -176,6 +178,7 @@ int main(int argc, char* const* argv)
     struct config_t config;
     struct stream_config_t stream_config;
     struct main_t   main_s;
+    int max_size = 0;
 
     printf("%s version %s\n\n", argv[0], VBAN_VERSION);
 
@@ -213,17 +216,26 @@ int main(int argc, char* const* argv)
     }
 
     audio_get_stream_config(main_s.audio, &stream_config);
+    packet_init_header(main_s.buffer, &stream_config, config.stream_name);
+    max_size = packet_get_max_payload_size(main_s.buffer);
 
     while (MainRun)
     {
-        size = audio_read(main_s.audio, PACKET_PAYLOAD_PTR(main_s.buffer), VBAN_DATA_MAX_SIZE);
+        size = audio_read(main_s.audio, PACKET_PAYLOAD_PTR(main_s.buffer), max_size);
         if (size < 0)
         {
             MainRun = 0;
             break;
         }
 
-        packet_set_stream_config(main_s.buffer, &stream_config, size);
+        packet_set_new_content(main_s.buffer, size);
+        ret = packet_check(config.stream_name, main_s.buffer, size + sizeof(struct VBanHeader));
+        if (ret != 0)
+        {
+            logger_log(LOG_ERROR, "%s: packet prepared is invalid", __func__);
+            break;
+        }
+
         ret = socket_write(main_s.socket, main_s.buffer, size + sizeof(struct VBanHeader));
         if (ret < 0)
         {

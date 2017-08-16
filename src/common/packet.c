@@ -98,6 +98,9 @@ static int packet_pcm_check(char const* buffer, size_t size)
     size_t sample_size      = 0;
     size_t payload_size     = 0;
 
+    logger_log(LOG_DEBUG, "%s: packet is vban: %u, sr: %d, nbs: %d, nbc: %d, bit: %d, name: %s, nu: %u",
+        __func__, hdr->vban, hdr->format_SR, hdr->format_nbs, hdr->format_nbc, hdr->format_bit, hdr->streamname, hdr->nuFrame);
+
     if (bit_resolution >= VBAN_BIT_RESOLUTION_MAX)
     {
         logger_log(LOG_WARNING, "%s: invalid bit resolution", __func__);
@@ -115,11 +118,32 @@ static int packet_pcm_check(char const* buffer, size_t size)
 
     if (payload_size != (size - VBAN_HEADER_SIZE))
     {
-        logger_log(LOG_WARNING, "%s: invalid payload size", __func__);
+        logger_log(LOG_WARNING, "%s: invalid payload size, expected %d, got %d", __func__, payload_size, (size - VBAN_HEADER_SIZE));
         return -EINVAL;
     }
     
     return 0;
+}
+
+int packet_get_max_payload_size(char const* buffer)
+{
+    int ret = 0;
+
+    struct VBanHeader const* const hdr = PACKET_HEADER_PTR(buffer);
+
+    if (buffer == 0)
+    {
+        logger_log(LOG_FATAL, "%s: null argument", __func__);
+        return -EINVAL;
+    }
+
+    ret = VBAN_DATA_MAX_SIZE / ((hdr->format_nbc+1) * VBanBitResolutionSize[(hdr->format_bit & VBAN_BIT_RESOLUTION_MASK)]);
+    if (ret > VBAN_SAMPLES_MAX_NB)
+    {
+        ret = VBAN_SAMPLES_MAX_NB;
+    }
+
+    return ret;
 }
 
 int packet_get_stream_config(char const* buffer, struct stream_config_t* stream_config)
@@ -143,7 +167,7 @@ int packet_get_stream_config(char const* buffer, struct stream_config_t* stream_
     return 0;
 }
 
-int packet_set_stream_config(char* buffer, struct stream_config_t const* stream_config, size_t size)
+int packet_init_header(char* buffer, struct stream_config_t const* stream_config, char const* streamname)
 {
     struct VBanHeader* const hdr = PACKET_HEADER_PTR(buffer);
 
@@ -153,12 +177,27 @@ int packet_set_stream_config(char* buffer, struct stream_config_t const* stream_
         return -EINVAL;
     }
 
-    /** no, I don't check again if this is a valid audio pcm packet...*/
-
+    hdr->vban       = VBAN_HEADER_FOURC;
     hdr->format_nbc = stream_config->nb_channels - 1;
-    hdr->format_SR  = (hdr->format_SR & ~VBAN_SR_MASK) | vban_sr_from_value(stream_config->sample_rate);
-    hdr->format_bit = (hdr->format_SR & ~VBAN_BIT_RESOLUTION_MASK) | stream_config->bit_fmt;
-    hdr->format_nbs = size / (stream_config->nb_channels * VBanBitResolutionSize[stream_config->bit_fmt]);
+    hdr->format_SR  = vban_sr_from_value(stream_config->sample_rate);
+    hdr->format_bit = stream_config->bit_fmt;
+    strncpy(hdr->streamname, streamname, VBAN_STREAM_NAME_SIZE);
+    hdr->nuFrame    = 0;
+
+    return 0;
+}
+
+int packet_set_new_content(char* buffer, size_t payload_size)
+{
+    struct VBanHeader* const hdr = PACKET_HEADER_PTR(buffer);
+
+    if (buffer == 0)
+    {
+        logger_log(LOG_FATAL, "%s: null argument", __func__);
+        return -EINVAL;
+    }
+    hdr->format_nbs = (payload_size / ((hdr->format_nbc+1) * VBanBitResolutionSize[(hdr->format_bit & VBAN_BIT_RESOLUTION_MASK)])) - 1;
+    ++hdr->nuFrame;
 
     return 0;
 }

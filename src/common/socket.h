@@ -26,12 +26,20 @@
  */
 #define SOCKET_IP_ADDRESS_SIZE    32
 
+enum socket_direction
+{
+    SOCKET_IN,
+    SOCKET_OUT,
+};
+
+
 /**
  * Socket configuration structure.
  * To be used at init time
  */
 struct socket_config_t
 {
+    enum socket_direction   direction;
     char                    ip_address[SOCKET_IP_ADDRESS_SIZE];
     short                   port;
 };

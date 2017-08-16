@@ -27,6 +27,7 @@
 #define VBAN_PROTOCOL_MAX_SIZE      1464
 #define VBAN_DATA_MAX_SIZE          (VBAN_PROTOCOL_MAX_SIZE - VBAN_HEADER_SIZE)
 #define VBAN_CHANNELS_MAX_NB        256
+#define VBAN_SAMPLES_MAX_NB         256
 
 struct VBanHeader
 {
