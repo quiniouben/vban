@@ -70,7 +70,7 @@ int pipe_open(audio_backend_handle_t handle, char const* output_name, enum audio
         return ret;
     }
 
-    pipe_backend->fd = open(FIFO_FILENAME, (direction == AUDIO_OUT) ? O_WRONLY : O_RDONLY);
+    pipe_backend->fd = open((output_name[0] == 0) ? FIFO_FILENAME : output_name, (direction == AUDIO_OUT) ? O_WRONLY : O_RDONLY);
     if (pipe_backend->fd == -1)
     {
         logger_log(LOG_FATAL, "%s: open error", __func__); //

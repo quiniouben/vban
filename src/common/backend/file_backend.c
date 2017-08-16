@@ -78,7 +78,7 @@ int file_open(audio_backend_handle_t handle, char const* output_name, enum audio
     }
 
     if(strcmp("", output_name))
-        file_backend->fd = open(output_name, (direction == AUDIO_OUT) ? (O_CREAT|O_WRONLY|O_TRUNC) :(O_CREAT|O_RDONLY|O_TRUNC), S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
+        file_backend->fd = open(output_name, (direction == AUDIO_OUT) ? (O_CREAT|O_WRONLY|O_TRUNC) : O_RDONLY, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
     else
         file_backend->fd = STDOUT_FILENO; 
 
@@ -153,6 +153,7 @@ int file_read(audio_backend_handle_t handle, char* data, size_t size)
         logger_log(LOG_ERROR, "%s:", __func__);
         perror("write");
     }
+
     return ret;
 }
 
