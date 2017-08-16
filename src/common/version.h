@@ -18,7 +18,7 @@
 #ifndef __VERSION_H__
 #define __VERSION_H__
 
-#define VBAN_VERSION "2.0.1"
+#define VBAN_VERSION "2.0.2"
 
 #endif /*__VERSION_H__*/
 

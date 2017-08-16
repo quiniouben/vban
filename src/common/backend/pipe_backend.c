@@ -19,6 +19,7 @@ struct pipe_backend_t
 static int pipe_open(audio_backend_handle_t handle, char const* output_name, enum audio_direction direction, size_t buffer_size, struct stream_config_t const* config);
 static int pipe_close(audio_backend_handle_t handle);
 static int pipe_write(audio_backend_handle_t handle, char const* data, size_t size);
+static int pipe_read(audio_backend_handle_t handle, char* data, size_t size);
 
 int pipe_backend_init(audio_backend_handle_t* handle)
 {
@@ -40,6 +41,7 @@ int pipe_backend_init(audio_backend_handle_t* handle)
     pipe_backend->parent.open               = pipe_open;
     pipe_backend->parent.close              = pipe_close;
     pipe_backend->parent.write              = pipe_write;
+    pipe_backend->parent.read               = pipe_read;
 
     *handle = (audio_backend_handle_t)pipe_backend;
 
@@ -68,7 +70,7 @@ int pipe_open(audio_backend_handle_t handle, char const* output_name, enum audio
         return ret;
     }
 
-    pipe_backend->fd = open(FIFO_FILENAME, O_WRONLY);
+    pipe_backend->fd = open(FIFO_FILENAME, (direction == AUDIO_OUT) ? O_WRONLY : O_RDONLY);
     if (pipe_backend->fd == -1)
     {
         logger_log(LOG_FATAL, "%s: open error", __func__); //
@@ -121,3 +123,22 @@ int pipe_write(audio_backend_handle_t handle, char const* data, size_t size)
     return ret;
 }
 
+int pipe_read(audio_backend_handle_t handle, char* data, size_t size)
+{
+    int ret = 0;
+    struct pipe_backend_t* const pipe_backend = (struct pipe_backend_t*)handle;
+
+    if ((handle == 0) || (data == 0))
+    {
+        logger_log(LOG_ERROR, "%s: handle or data pointer is null", __func__);
+        return -EINVAL;
+    }
+
+    ret = read(pipe_backend->fd, (void *)data, size);
+    if (ret < 0)
+    {
+        logger_log(LOG_ERROR, "%s:", __func__);
+        perror("read");
+    }
+    return ret;
+}

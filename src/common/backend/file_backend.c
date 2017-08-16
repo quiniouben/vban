@@ -37,6 +37,7 @@ struct file_backend_t
 static int file_open(audio_backend_handle_t handle, char const* output_name, enum audio_direction direction, size_t buffer_size, struct stream_config_t const* config);
 static int file_close(audio_backend_handle_t handle);
 static int file_write(audio_backend_handle_t handle, char const* data, size_t size);
+static int file_read(audio_backend_handle_t handle, char* data, size_t size);
 
 int file_backend_init(audio_backend_handle_t* handle)
 {
@@ -58,17 +59,12 @@ int file_backend_init(audio_backend_handle_t* handle)
     file_backend->parent.open               = file_open;
     file_backend->parent.close              = file_close;
     file_backend->parent.write              = file_write;
+    file_backend->parent.read               = file_read;
 
     *handle = (audio_backend_handle_t)file_backend;
 
     return 0;
     
-}
-
-int file_is_fmt_supported(audio_backend_handle_t handle, enum VBanBitResolution bit_resolution, unsigned int nb_channels, unsigned int rate)
-{
-    /*XXX*/
-    return 1;
 }
 
 int file_open(audio_backend_handle_t handle, char const* output_name, enum audio_direction direction, size_t buffer_size, struct stream_config_t const* config)
@@ -82,7 +78,7 @@ int file_open(audio_backend_handle_t handle, char const* output_name, enum audio
     }
 
     if(strcmp("", output_name))
-        file_backend->fd = open(output_name, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
+        file_backend->fd = open(output_name, (direction == AUDIO_OUT) ? (O_CREAT|O_WRONLY|O_TRUNC) :(O_CREAT|O_RDONLY|O_TRUNC), S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
     else
         file_backend->fd = STDOUT_FILENO; 
 
@@ -132,6 +128,26 @@ int file_write(audio_backend_handle_t handle, char const* data, size_t size)
     }
 
     ret = write(file_backend->fd, (const void *)data, size);
+    if (ret < 0)
+    {
+        logger_log(LOG_ERROR, "%s:", __func__);
+        perror("write");
+    }
+    return ret;
+}
+
+int file_read(audio_backend_handle_t handle, char* data, size_t size)
+{
+    int ret = 0;
+    struct file_backend_t* const file_backend = (struct file_backend_t*)handle;
+
+    if ((handle == 0) || (data == 0))
+    {
+        logger_log(LOG_ERROR, "%s: handle or data pointer is null", __func__);
+        return -EINVAL;
+    }
+
+    ret = read(file_backend->fd, (void *)data, size);
     if (ret < 0)
     {
         logger_log(LOG_ERROR, "%s:", __func__);

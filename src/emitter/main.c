@@ -56,8 +56,7 @@ void usage()
     printf("-i, --ipaddress=IP      : MANDATORY. ipaddress to send stream to\n");
     printf("-p, --port=PORT         : MANDATORY. port to use\n");
     printf("-s, --streamname=NAME   : MANDATORY. streamname to use\n");
-//XXX    printf("-b, --backend=TYPE      : audio backend to use. %s\n", audio_backend_get_help());
-    printf("-b, --backend=TYPE      : TEMPORARY DISABLED. audio backend to use. Only alsa backend is working at this time\n");
+    printf("-b, --backend=TYPE      : audio backend to use. %s\n", audio_backend_get_help());
     printf("-d, --device=NAME       : Audio device name. This is file name for file backend, server name for jack backend, device for alsa, stream_name for pulseaudio.\n");
     printf("-r, --rate=VALUE        : Audio device sample rate. default 44100\n");
     printf("-n, --nbchannels=VALUE  : Audio device number of channels. default 2\n");
@@ -119,8 +118,9 @@ int get_options(struct config_t* config, int argc, char* const* argv)
                 strncpy(config->stream_name, optarg, VBAN_STREAM_NAME_SIZE);
                 break;
 
-/*XXX            case 'b':
-                strncpy(config->audio.backend_name, optarg, AUDIO_BACKEND_NAME_SIZE);*/
+            case 'b':
+                strncpy(config->audio.backend_name, optarg, AUDIO_BACKEND_NAME_SIZE);
+                break;
 
             case 'd':
                 strncpy(config->audio.device_name, optarg, AUDIO_DEVICE_NAME_SIZE);
@@ -165,6 +165,12 @@ int get_options(struct config_t* config, int argc, char* const* argv)
     {
         logger_log(LOG_FATAL, "Missing ip address, port or stream name");
         usage();
+        return 1;
+    }
+
+    if (!strncmp(config->audio.backend_name, "jack", AUDIO_BACKEND_NAME_SIZE))
+    {
+        logger_log(LOG_FATAL, "Sorry jack backend is not ready for emitter yet");
         return 1;
     }
 
