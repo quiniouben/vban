@@ -32,7 +32,7 @@ static char* const bit_fmt_names [VBAN_BIT_RESOLUTION_MAX] =
 
 enum VBanBitResolution stream_parse_bit_fmt(char const* argv)
 {
-    size_t index;
+    size_t index = 0;
     while ((index < VBAN_BIT_RESOLUTION_MAX) && strcmp(argv, bit_fmt_names[index]))
     {
         ++index;
