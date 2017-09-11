@@ -36,6 +36,7 @@ struct socket_t
 
 static int socket_open(socket_handle_t handle);
 static int socket_close(socket_handle_t handle);
+static int socket_is_broadcast_address(char const* ip);
 
 int socket_init(socket_handle_t* handle, struct socket_config_t const* config)
 {
@@ -85,9 +86,15 @@ int socket_release(socket_handle_t* handle)
     return ret;
 }
 
+int socket_is_broadcast_address(char const* ip)
+{
+    return strncmp(ip + strlen(ip) - 3, "255", 3) == 0;
+}
+
 int socket_open(socket_handle_t handle)
 {
     int ret = 0;
+    int optflag = 0;
     struct sockaddr_in si_me;
 
     if (handle == 0)
@@ -130,6 +137,21 @@ int socket_open(socket_handle_t handle)
             logger_log(LOG_ERROR, "%s: unable to bind socket", __func__);
             socket_close(handle);
             return errno;
+        }
+    }
+    else
+    {
+        if (socket_is_broadcast_address(handle->config.ip_address))
+        {
+            logger_log(LOG_DEBUG, "%s: broadcast address detected", __func__);
+            optflag = 1;
+            ret = setsockopt(handle->fd, SOL_SOCKET, SO_BROADCAST, &optflag, sizeof(optflag));
+            if (ret < 0)
+            {
+                logger_log(LOG_ERROR, "%s: unable to set broadcast option", __func__);
+                socket_close(handle);
+                return errno;
+            }
         }
     }
 
