@@ -18,7 +18,7 @@ Usual package names are:
 * PulseAudio: libpulse(X) and eventually libpulse(X)-dev
 * Jack: libjack(X) and eventually libjack(X)-dev
 
-vban is distributed with autotools build scripts, therefore, to build, you need to install autoconf and to invoke:
+vban is distributed with autotools build scripts, therefore, to build, you need to install autoconf and automake, and to invoke:
 
 	$ ./autogen.sh              # probably only once for ever
 	$ ./configure               # with or without options (--help to get the list of possible options)
