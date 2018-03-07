@@ -234,13 +234,14 @@ int jack_write(audio_backend_handle_t handle, char const* data, size_t size)
 
 int jack_process_cb(jack_nframes_t nframes, void* arg)
 {
+    static jack_default_audio_sample_t* buffers[VBAN_CHANNELS_MAX_NB];
     struct jack_backend_t* const jack_backend = (struct jack_backend_t*)arg;
+    size_t sampleSize;
     size_t channel;
     size_t sample;
-    jack_ringbuffer_data_t rb_data[2];
-    static jack_default_audio_sample_t* buffers[VBAN_CHANNELS_MAX_NB];
-    char const* ptr;
-    size_t len;
+    char* buffer = 0;
+    char* ptr = 0;
+    size_t len = 0;
 
     if (arg == 0)
     {
@@ -257,47 +258,44 @@ int jack_process_cb(jack_nframes_t nframes, void* arg)
         buffers[channel] = (jack_default_audio_sample_t*)jack_port_get_buffer(jack_backend->ports[channel], nframes);
     }
 
-    jack_ringbuffer_get_read_vector(jack_backend->ring_buffer, rb_data);
-
-    if ((rb_data[0].len == 0) && (rb_data[1].len == 0))
+    sampleSize = VBanBitResolutionSize[jack_backend->bit_fmt];
+    len = jack_ringbuffer_read_space(jack_backend->ring_buffer);
+    if (len < (nframes * jack_backend->nb_channels * sampleSize))
     {
-        logger_log(LOG_WARNING, "%s: no data available to read", __func__);
-        return 0;
+        logger_log(LOG_WARNING, "%s: short read", __func__);
+        goto end;
     }
 
-    ptr = rb_data[0].buf;
-    len = 0;
+    buffer = malloc(nframes * jack_backend->nb_channels * sampleSize);
+    if (buffer == 0)
+    {
+        logger_log(LOG_WARNING, "%s: alloc error", __func__);
+        goto end;
+    }
+
+    len = jack_ringbuffer_read(jack_backend->ring_buffer, buffer, (nframes * jack_backend->nb_channels * sampleSize));
+    if (len != (nframes * jack_backend->nb_channels * sampleSize))
+    {
+        logger_log(LOG_WARNING, "%s: short read", __func__);
+        goto end;
+    }
+
+    ptr = buffer;
+
     for (sample = 0; sample != nframes; ++sample)
     {
         for (channel = 0; channel != jack_backend->nb_channels; ++channel)
         {
-            if (len == rb_data[0].len)
-            {
-                if (rb_data[1].len != 0)
-                {
-                    ptr = rb_data[1].buf;
-                }
-                else
-                {
-                    logger_log(LOG_WARNING, "%s: short read", __func__);
-                    goto end;
-                }
-            }
-            else if (len == (rb_data[0].len + rb_data[1].len))
-            {
-                logger_log(LOG_WARNING, "%s: short read", __func__);
-                goto end;
-            }
-
             buffers[channel][sample] = jack_convert_sample(ptr, jack_backend->bit_fmt);
-            ptr += VBanBitResolutionSize[jack_backend->bit_fmt];
-            len += VBanBitResolutionSize[jack_backend->bit_fmt];
+            ptr += sampleSize;
         }
     }
 
 end:
-    jack_ringbuffer_read_advance(jack_backend->ring_buffer, len);
-
+    if (buffer != 0)
+    {
+        free(buffer);
+    }
     return 0;
 }
 
@@ -318,22 +316,22 @@ void jack_shutdown_cb(void* arg)
 
 inline jack_default_audio_sample_t jack_convert_sample(char const* ptr, enum VBanBitResolution bit_fmt)
 {
-    int value;
+    int32_t value;
 
     switch (bit_fmt)
     {
         case VBAN_BITFMT_8_INT:
-            return (float)*((int8_t const*)ptr);
+            return (float)(*((int8_t const*)ptr)) / (float)(1 << 7);
 
         case VBAN_BITFMT_16_INT:
-            return (float)(*((int16_t const*)ptr)) / 32768;
+            return (float)(*((int16_t const*)ptr)) / (float)(1 << 15);
 
         case VBAN_BITFMT_24_INT:
-            memcpy(&value, ptr, 3);
-            return (float)value;
+            value = ptr[2] << 16 | ((unsigned char const)(ptr[1]) << 8) | (unsigned char const)(ptr[0]);
+            return (float)value / (float)(1 << 23);
 
         case VBAN_BITFMT_32_INT:
-            return (float)*((int32_t const*)ptr);
+            return (float)(*((int32_t const*)ptr)) / (float)(1 << 31);
 
         case VBAN_BITFMT_32_FLOAT:
             return *(float const*)ptr;
