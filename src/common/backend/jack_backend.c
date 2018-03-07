@@ -241,6 +241,10 @@ int jack_process_cb(jack_nframes_t nframes, void* arg)
     static jack_default_audio_sample_t* buffers[VBAN_CHANNELS_MAX_NB];
     char const* ptr;
     size_t len;
+    size_t sampleSize;
+    size_t index = 0;
+    size_t part;
+    char sampleParts[8];
 
     if (arg == 0)
     {
@@ -250,6 +254,7 @@ int jack_process_cb(jack_nframes_t nframes, void* arg)
 
     logger_log(LOG_DEBUG, "%s", __func__);
 
+    sampleSize = VBanBitResolutionSize[jack_backend->bit_fmt];
     jack_backend->active = 1;
 
     for (channel = 0; channel != jack_backend->nb_channels; ++channel)
@@ -259,9 +264,9 @@ int jack_process_cb(jack_nframes_t nframes, void* arg)
 
     jack_ringbuffer_get_read_vector(jack_backend->ring_buffer, rb_data);
 
-    if ((rb_data[0].len == 0) && (rb_data[1].len == 0))
+    if ((rb_data[0].len + rb_data[1].len) < (nframes * jack_backend->nb_channels * sampleSize))
     {
-        logger_log(LOG_WARNING, "%s: no data available to read", __func__);
+        logger_log(LOG_WARNING, "%s: short read", __func__);
         return 0;
     }
 
@@ -271,31 +276,39 @@ int jack_process_cb(jack_nframes_t nframes, void* arg)
     {
         for (channel = 0; channel != jack_backend->nb_channels; ++channel)
         {
-            if (len == rb_data[0].len)
+            if (index == 0)
             {
-                if (rb_data[1].len != 0)
+                if ((len + sampleSize) > rb_data[0].len)
+                {
+                    part = 0;
+                    while (ptr != (rb_data[0].buf + rb_data[0].len))
+                    {
+                        sampleParts[part++] = *(ptr++);
+                    }
+                    ptr = rb_data[1].buf;
+                    for (; part < VBanBitResolutionSize[jack_backend->bit_fmt]; ++part, ++ptr)
+                    {
+                        sampleParts[part] = *ptr;
+                    }
+
+                    buffers[channel][sample] = jack_convert_sample((char const*)sampleParts, jack_backend->bit_fmt);
+                    len += sampleSize;
+                    index = 1;
+                    continue;
+                }
+                if (len == rb_data[0].len)
                 {
                     ptr = rb_data[1].buf;
+                    index = 1;
                 }
-                else
-                {
-                    logger_log(LOG_WARNING, "%s: short read", __func__);
-                    goto end;
-                }
-            }
-            else if (len == (rb_data[0].len + rb_data[1].len))
-            {
-                logger_log(LOG_WARNING, "%s: short read", __func__);
-                goto end;
             }
 
             buffers[channel][sample] = jack_convert_sample(ptr, jack_backend->bit_fmt);
-            ptr += VBanBitResolutionSize[jack_backend->bit_fmt];
-            len += VBanBitResolutionSize[jack_backend->bit_fmt];
+            ptr += sampleSize;
+            len += sampleSize;
         }
     }
 
-end:
     jack_ringbuffer_read_advance(jack_backend->ring_buffer, len);
 
     return 0;
@@ -316,24 +329,24 @@ void jack_shutdown_cb(void* arg)
     /*XXX how to notify upper layer that we are done ?*/
 }
 
-inline jack_default_audio_sample_t jack_convert_sample(char const* ptr, enum VBanBitResolution bit_fmt)
+jack_default_audio_sample_t jack_convert_sample(char const* ptr, enum VBanBitResolution bit_fmt)
 {
     int value;
 
     switch (bit_fmt)
     {
         case VBAN_BITFMT_8_INT:
-            return (float)*((int8_t const*)ptr);
+            return (float)(*((int8_t const*)ptr)) / (float)(1 << 7);
 
         case VBAN_BITFMT_16_INT:
-            return (float)(*((int16_t const*)ptr)) / 32768;
+            return (float)(*((int16_t const*)ptr)) / (float)(1 << 15);
 
         case VBAN_BITFMT_24_INT:
-            memcpy(&value, ptr, 3);
-            return (float)value;
+            value = (ptr[2] << 16) | ((unsigned char)ptr[1] << 8) | (unsigned char)ptr[0];
+            return (float)value / (float)(1 << 23);
 
         case VBAN_BITFMT_32_INT:
-            return (float)*((int32_t const*)ptr);
+            return (float)*((int32_t const*)ptr) / (float)(1 << 31);
 
         case VBAN_BITFMT_32_FLOAT:
             return *(float const*)ptr;
