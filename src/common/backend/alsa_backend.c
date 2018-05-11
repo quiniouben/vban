@@ -75,6 +75,7 @@ int alsa_open(audio_backend_handle_t handle, char const* output_name, enum audio
 {
     int ret;
     struct alsa_backend_t* const alsa_backend = (struct alsa_backend_t*)handle;
+    size_t frame_nb = 0;
 
     if (handle == 0)
     {
@@ -83,6 +84,7 @@ int alsa_open(audio_backend_handle_t handle, char const* output_name, enum audio
     }
 
     alsa_backend->frame_size = VBanBitResolutionSize[config->bit_fmt] * config->nb_channels;
+    frame_nb = buffer_size / alsa_backend->frame_size;
 
     ret = snd_pcm_open(&alsa_backend->alsa_handle, (output_name[0] == '\0') ? ALSA_DEVICE_NAME_DEFAULT : output_name, 
         (direction == AUDIO_OUT) ? SND_PCM_STREAM_PLAYBACK : SND_PCM_STREAM_CAPTURE, 0);
@@ -101,8 +103,7 @@ int alsa_open(audio_backend_handle_t handle, char const* output_name, enum audio
                                 config->nb_channels,
                                 config->sample_rate,
                                 1,
-                                //XXX this is wrong !
-                                ((unsigned int)buffer_size * 1000000) / config->sample_rate);
+                                ((unsigned int)frame_nb* 1000000) / config->sample_rate);
 
     if (ret < 0)
     {
