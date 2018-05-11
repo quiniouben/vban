@@ -79,6 +79,17 @@ Examples:
 	vban_receptor -i IP -p PORT -s STREAMNAME -c2,41,125,7,1,45     # select some channels and play them out on 6 output channels (same comment)
 	vban_emitter -i IP -p PORT -s STREAMNAME -c1,1,1,1               # use audio source channel 1 (opening it in mono therefore, and build up a 4 channels stream with copies of the same data in all channels)
 
+LATENCY
+-------
+
+vban_receptor does its best to keep latency reasonable, according to the -q (--quality) parameter.
+A buffer size is computed according to the quality parameter, following the recommandation of VBAN Protocol specification document.
+Then:
+* data is read from network in chunks of buffer size
+* for alsa, buffer size is used to require an adequate latency
+* for pulseaudio, it is directly used to set the stream buffer size
+* for jack, it is used to set an internal buffer size to the double
+
 GUI
 ---
 

@@ -101,6 +101,7 @@ int alsa_open(audio_backend_handle_t handle, char const* output_name, enum audio
                                 config->nb_channels,
                                 config->sample_rate,
                                 1,
+                                //XXX this is wrong !
                                 ((unsigned int)buffer_size * 1000000) / config->sample_rate);
 
     if (ret < 0)
