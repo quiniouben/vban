@@ -7,7 +7,7 @@
 #include <string.h>
 #include "common/logger.h"
 
-#define NB_BUFFERS  7
+#define NB_BUFFERS  2
 
 struct jack_backend_t
 {
@@ -139,13 +139,16 @@ int jack_open(audio_backend_handle_t handle, char const* output_name, enum audio
         }
     }
 
-    jack_buffer_size            = jack_get_buffer_size(jack_backend->jack_client);
-    // well, we should calculate something with bit_fmt ratio to 32bit...
+    jack_buffer_size            = jack_get_buffer_size(jack_backend->jack_client) * jack_backend->nb_channels * VBanBitResolutionSize[config->bit_fmt];
     buffer_size                 = ((buffer_size > jack_buffer_size) ? buffer_size : jack_buffer_size) * NB_BUFFERS;
     jack_backend->nb_channels   = config->nb_channels;
     jack_backend->bit_fmt= config->bit_fmt;
 
     jack_backend->ring_buffer   = jack_ringbuffer_create(buffer_size);
+
+    char* const zeros = calloc(1, buffer_size / NB_BUFFERS);
+    jack_ringbuffer_write(jack_backend->ring_buffer, zeros, buffer_size / NB_BUFFERS);
+    free(zeros);
 
     ret = jack_set_process_callback(jack_backend->jack_client, jack_process_cb, jack_backend);
     if (ret)
@@ -178,6 +181,8 @@ int jack_close(audio_backend_handle_t handle)
         /** nothing to do */
         return 0;
     }
+
+    jack_backend->active = 0;
 
     ret = jack_deactivate(jack_backend->jack_client);
     if (ret)
@@ -219,6 +224,12 @@ int jack_write(audio_backend_handle_t handle, char const* data, size_t size)
     {
         logger_log(LOG_ERROR, "%s: device not open", __func__);
         return -ENODEV;
+    }
+
+    if (jack_backend->active == 0)
+    {
+        logger_log(LOG_DEBUG, "%s: server not active yet", __func__);
+        return size;
     }
 
     if (jack_ringbuffer_write_space(jack_backend->ring_buffer) < size)

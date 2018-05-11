@@ -181,7 +181,7 @@ int packet_init_header(char* buffer, struct stream_config_t const* stream_config
     hdr->format_nbc = stream_config->nb_channels - 1;
     hdr->format_SR  = vban_sr_from_value(stream_config->sample_rate);
     hdr->format_bit = stream_config->bit_fmt;
-    strncpy(hdr->streamname, streamname, VBAN_STREAM_NAME_SIZE);
+    strncpy(hdr->streamname, streamname, VBAN_STREAM_NAME_SIZE-1);
     hdr->nuFrame    = 0;
 
     return 0;

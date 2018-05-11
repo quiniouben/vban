@@ -107,7 +107,7 @@ int get_options(struct config_t* config, int argc, char* const* argv)
         switch (c)
         {
             case 'i':
-                strncpy(config->socket.ip_address, optarg, SOCKET_IP_ADDRESS_SIZE);
+                strncpy(config->socket.ip_address, optarg, SOCKET_IP_ADDRESS_SIZE-1);
                 break;
 
             case 'p':
@@ -115,15 +115,15 @@ int get_options(struct config_t* config, int argc, char* const* argv)
                 break;
 
             case 's':
-                strncpy(config->stream_name, optarg, VBAN_STREAM_NAME_SIZE);
+                strncpy(config->stream_name, optarg, VBAN_STREAM_NAME_SIZE-1);
                 break;
 
             case 'b':
-                strncpy(config->audio.backend_name, optarg, AUDIO_BACKEND_NAME_SIZE);
+                strncpy(config->audio.backend_name, optarg, AUDIO_BACKEND_NAME_SIZE-1);
                 break;
 
             case 'd':
-                strncpy(config->audio.device_name, optarg, AUDIO_DEVICE_NAME_SIZE);
+                strncpy(config->audio.device_name, optarg, AUDIO_DEVICE_NAME_SIZE-1);
                 break;
 
             case 'r':
