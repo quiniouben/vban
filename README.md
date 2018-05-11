@@ -85,7 +85,7 @@ LATENCY
 vban_receptor does its best to keep latency reasonable, according to the -q (--quality) parameter.
 A buffer size is computed according to the quality parameter, following the recommandation of VBAN Protocol specification document.
 Then:
-* data is read from network in chunks of buffer size
+* data is read from / written to network in chunks of buffer size
 * for alsa, buffer size is used to require an adequate latency
 * for pulseaudio, it is directly used to set the stream buffer size
 * for jack, it is used to set an internal buffer size to the double
