@@ -44,7 +44,7 @@ Invoking vban_receptor or vban_emitter without any parameter will give hints on 
 	-p, --port=PORT         : MANDATORY. port to listen to
 	-s, --streamname=NAME   : MANDATORY. streamname to play
 	-b, --backend=TYPE      : audio backend to use. Available audio backends are: alsa pulseaudio jack pipe file . default is alsa.
-	-q, --quality=ID        : network quality indicator from 0 (low latency) to 4. default is 1
+    -q, --quality=ID        : network quality indicator from 0 (low latency) to 4. This also have interaction with jack buffer size. default is 1
     -c, --channels=LIST     : channels from the stream to use. LIST is of form x,y,z,... default is to forward the stream as it is
 	-o, --output=NAME       : DEPRECATED. please use -d
 	-d, --device=NAME       : Audio device name. This is file name for file backend, server name for jack backend, device for alsa, stream_name for pulseaudio.

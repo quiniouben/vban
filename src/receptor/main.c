@@ -57,7 +57,7 @@ void usage()
     printf("-p, --port=PORT         : MANDATORY. port to listen to\n");
     printf("-s, --streamname=NAME   : MANDATORY. streamname to play\n");
     printf("-b, --backend=TYPE      : audio backend to use. %s\n", audio_backend_get_help());
-    printf("-q, --quality=ID        : network quality indicator from 0 (low latency) to 4. default is 1\n");
+    printf("-q, --quality=ID        : network quality indicator from 0 (low latency) to 4. This also have interaction with jack buffer size. default is 1\n");
     printf("-c, --channels=LIST     : channels from the stream to use. LIST is of form x,y,z,... default is to forward the stream as it is\n");
     printf("-o, --output=NAME       : DEPRECATED. please use -d\n");
     printf("-d, --device=NAME       : Audio device name. This is file name for file backend, server name for jack backend, device for alsa, stream_name for pulseaudio.\n");
