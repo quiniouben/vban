@@ -75,7 +75,7 @@ int alsa_open(audio_backend_handle_t handle, char const* output_name, enum audio
 {
     int ret;
     struct alsa_backend_t* const alsa_backend = (struct alsa_backend_t*)handle;
-    size_t frame_nb = 0;
+    snd_pcm_hw_params_t *hw_params;
 
     if (handle == 0)
     {
@@ -84,8 +84,6 @@ int alsa_open(audio_backend_handle_t handle, char const* output_name, enum audio
     }
 
     alsa_backend->frame_size = VBanBitResolutionSize[config->bit_fmt] * config->nb_channels;
-    frame_nb = buffer_size / alsa_backend->frame_size;
-
     ret = snd_pcm_open(&alsa_backend->alsa_handle, (output_name[0] == '\0') ? ALSA_DEVICE_NAME_DEFAULT : output_name, 
         (direction == AUDIO_OUT) ? SND_PCM_STREAM_PLAYBACK : SND_PCM_STREAM_CAPTURE, 0);
     if (ret < 0)
@@ -97,20 +95,56 @@ int alsa_open(audio_backend_handle_t handle, char const* output_name, enum audio
 
     logger_log(LOG_DEBUG, "%s: snd_pcm_open", __func__);
 
-    ret = snd_pcm_set_params(alsa_backend->alsa_handle,
-                                vban_to_alsa_format(config->bit_fmt),
-                                SND_PCM_ACCESS_RW_INTERLEAVED,
-                                config->nb_channels,
-                                config->sample_rate,
-                                1,
-                                ((unsigned int)frame_nb* 1000000) / config->sample_rate);
-
-    if (ret < 0)
-    {
-        logger_log(LOG_ERROR, "%s: set_params error: %s", __func__, snd_strerror(ret));
+    if ((ret = snd_pcm_hw_params_malloc (&hw_params)) < 0) {
+        logger_log(LOG_FATAL, "cannot allocate hardware parameter structure (%s)\n",
+                snd_strerror (ret));
         alsa_close(handle);
         return ret;
     }
+
+    if ((ret = snd_pcm_hw_params_any (alsa_backend->alsa_handle, hw_params)) < 0) {
+        logger_log(LOG_FATAL, "cannot initialize hardware parameter structure (%s)\n",
+                snd_strerror (ret));
+        alsa_close(handle);
+        return ret;
+    }
+
+    if ((ret = snd_pcm_hw_params_set_access (alsa_backend->alsa_handle, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED)) < 0) {
+        logger_log(LOG_FATAL, "cannot set access type (%s)\n",
+                snd_strerror (ret));
+        alsa_close(handle);
+        return ret;
+    }
+
+    if ((ret = snd_pcm_hw_params_set_format (alsa_backend->alsa_handle, hw_params, vban_to_alsa_format(config->bit_fmt))) < 0) {
+        logger_log(LOG_FATAL, "cannot set sample format (%s)\n",
+                snd_strerror (ret));
+        alsa_close(handle);
+        return ret;
+    }
+
+    if ((ret = snd_pcm_hw_params_set_rate(alsa_backend->alsa_handle, hw_params, config->sample_rate, 0)) < 0) {
+        logger_log(LOG_FATAL, "cannot set sample rate (%s)\n",
+                snd_strerror (ret));
+        alsa_close(handle);
+        return ret;
+    }
+
+    if ((ret = snd_pcm_hw_params_set_channels (alsa_backend->alsa_handle, hw_params, config->nb_channels)) < 0) {
+        logger_log(LOG_FATAL, "cannot set channel count (%s)\n",
+                snd_strerror (ret));
+        alsa_close(handle);
+        return ret;
+    }
+
+    if ((ret = snd_pcm_hw_params (alsa_backend->alsa_handle, hw_params)) < 0) {
+        logger_log(LOG_FATAL, "cannot set parameters (%s)\n",
+                snd_strerror (ret));
+        alsa_close(handle);
+        return ret;
+    }
+
+    snd_pcm_hw_params_free (hw_params);
 
     ret = snd_pcm_prepare(alsa_backend->alsa_handle);
     if (ret < 0)
