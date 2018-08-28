@@ -30,7 +30,7 @@ To install, simply invoke:
 
 By default, vban tools will be compiled with all 3 audio backends. To disable them, configure options are:
     --disable-alsa
-    --disable-pulse
+    --disable-pulseaudio
     --disable-jack
 
 Usage
