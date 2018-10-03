@@ -104,5 +104,51 @@ enum VBanCodec
     VBAN_CODEC_USER             =   0xF0
 };
 
+
+/********************************************************
+ *              TEXT SUB PROTOCOL                       *
+ ********************************************************/
+
+#define VBAN_BPS_MASK           0xE0
+#define VBAN_BPS_OFFSET         5
+#define VBAN_BPS_MAXNUMBER      25
+static long const VBanBPSList[VBAN_BPS_MAXNUMBER] =
+{
+    0,      110,    150,    300,    600,
+    1200,   2400,   4800,   9600,   14400,
+    19200,  31250,  38400,  57600,  115200,
+    128000, 230400, 250000, 256000, 460800,
+    921600,1000000,1500000,2000000, 3000000
+};
+
+#define VBAN_DATATYPE_MASK          0x07
+#define VBAN_DATATYPE_MAXNUMBER     1
+enum VBanDataTypeList
+{
+    VBAN_DATATYPE_8BITS = 0
+};
+
+#define VBAN_STREAMTYPE_MASK        0xF0
+#define VBAN_STREAMTYPE_OFFSET      4
+enum VBanStreamType
+{
+    VBAN_TXT_ASCII          =   0x00,
+    VBAN_TXT_UTF8           =   0x10,
+    VBAN_TXT_WCHAR          =   0x20,
+    VBAN_TXT_UNDEFINED_3    =   0x30,
+    VBAN_TXT_UNDEFINED_4    =   0x40,
+    VBAN_TXT_UNDEFINED_5    =   0x50,
+    VBAN_TXT_UNDEFINED_6    =   0x60,
+    VBAN_TXT_UNDEFINED_7    =   0x70,
+    VBAN_TXT_UNDEFINED_8    =   0x80,
+    VBAN_TXT_UNDEFINED_9    =   0x90,
+    VBAN_TXT_UNDEFINED_10   =   0xA0,
+    VBAN_TXT_UNDEFINED_11   =   0xB0,
+    VBAN_TXT_UNDEFINED_12   =   0xC0,
+    VBAN_TXT_UNDEFINED_13   =   0xD0,
+    VBAN_TXT_UNDEFINED_14   =   0xE0,
+    VBAN_TXT_USER           =   0xF0
+};
+
 #endif /*__VBAN_H__*/
 
