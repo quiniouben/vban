@@ -5,8 +5,8 @@ vban - Linux command-line VBAN tools
 
 vban project is an open-source implementation of VBAN protocol.
 VBAN is a simple audio over UDP protocol proposed by VB-Audio, see [VBAN Audio webpage](https://www.vb-audio.com/Voicemeeter/vban.htm)
-It is composed of several command-line tools allowing to stream audio coming from audio backend interfaces to VBAN stream (vban_emitter) or playout incoming VBAN stream to audio backend interfaces (vban_receptor)
-Up to now, Alsa, PulseAudio and Jack audio backends have been implemented. A fifo (pipe) output is also existing, to allow chaining command-line tools, and a file output too (writing raw pcm data).
+It is composed of several command-line tools allowing to stream audio coming from audio backend interfaces to VBAN stream (vban_emitter) or playout incoming VBAN stream to audio backend interfaces (vban_receptor), or send text over the vban protocol (vban_sendtext).
+Up to now, for audio tools, Alsa, PulseAudio and Jack audio backends have been implemented. A fifo (pipe) output is also existing, to allow chaining command-line tools, and a file output too (writing raw pcm data).
 
 Compilation and installation
 ----------------------------
@@ -44,8 +44,8 @@ Invoking vban_receptor or vban_emitter without any parameter will give hints on 
 	-p, --port=PORT         : MANDATORY. port to listen to
 	-s, --streamname=NAME   : MANDATORY. streamname to play
 	-b, --backend=TYPE      : audio backend to use. Available audio backends are: alsa pulseaudio jack pipe file . default is alsa.
-    -q, --quality=ID        : network quality indicator from 0 (low latency) to 4. This also have interaction with jack buffer size. default is 1
-    -c, --channels=LIST     : channels from the stream to use. LIST is of form x,y,z,... default is to forward the stream as it is
+	-q, --quality=ID        : network quality indicator from 0 (low latency) to 4. This also have interaction with jack buffer size. default is 1
+	-c, --channels=LIST     : channels from the stream to use. LIST is of form x,y,z,... default is to forward the stream as it is
 	-o, --output=NAME       : DEPRECATED. please use -d
 	-d, --device=NAME       : Audio device name. This is file name for file backend, server name for jack backend, device for alsa, stream_name for pulseaudio.
 	-l, --loglevel=LEVEL    : Log level, from 0 (FATAL) to 4 (DEBUG). default is 1 (ERROR)
@@ -61,11 +61,24 @@ Invoking vban_receptor or vban_emitter without any parameter will give hints on 
 	-r, --rate=VALUE        : Audio device sample rate. default 44100
 	-n, --nbchannels=VALUE  : Audio device number of channels. default 2
 	-f, --format=VALUE      : Audio device sample format (see below). default is 16I (16bits integer)
-    -c, --channels=LIST     : channels from the stream to use. LIST is of form x,y,z,... default is to forward the stream as it is
+	-c, --channels=LIST     : channels from the stream to use. LIST is of form x,y,z,... default is to forward the stream as it is
+	-l, --loglevel=LEVEL	: Log level, from 0 (FATAL) to 4 (DEBUG). default is 1 (ERROR)
+	-h, --help	          : display this message
+
+	Recognized bit format are 8I, 16I, 24I, 32I, 32F, 64F, 12I, 10I
+
+	Usage: vban_emitter [OPTIONS] MESSAGE
+
+	-i, --ipaddress=IP	  : MANDATORY. ipaddress to send stream to
+	-p, --port=PORT         : MANDATORY. port to use
+	-s, --streamname=NAME   : MANDATORY. streamname to use
+	-b, --bps=VALUE         : Data bitrate indicator. default 0 (no special bitrate)
+	-n, --ident=VALUE       : Subchannel identification. default 0
+	-f, --format=VALUE      : Text format used. can be: 0 (ASCII), 1 (UTF8), 2 (WCHAR), 240 (USER). default 1
 	-l, --loglevel=LEVEL    : Log level, from 0 (FATAL) to 4 (DEBUG). default is 1 (ERROR)
 	-h, --help              : display this message
 
-	Recognized bit format are 8I, 16I, 24I, 32I, 32F, 64F, 12I, 10I
+
 
 About --channels option, a bit more tips:
 * channels indexes are from 1 to 256 (as specified by VBAN specifications, and well, its probably enough for any soundcard or jack configuration)
