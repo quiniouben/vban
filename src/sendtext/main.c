@@ -43,7 +43,7 @@ struct main_t
 
 void usage()
 {
-    printf("\nUsage: vban_emitter [OPTIONS] MESSAGE\n\n");
+    printf("\nUsage: vban_sendtext [OPTIONS] MESSAGE\n\n");
     printf("-i, --ipaddress=IP      : MANDATORY. ipaddress to send stream to\n");
     printf("-p, --port=PORT         : MANDATORY. port to use\n");
     printf("-s, --streamname=NAME   : MANDATORY. streamname to use\n");
