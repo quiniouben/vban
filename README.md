@@ -67,7 +67,7 @@ Invoking vban_receptor or vban_emitter without any parameter will give hints on 
 
 	Recognized bit format are 8I, 16I, 24I, 32I, 32F, 64F, 12I, 10I
 
-	Usage: vban_emitter [OPTIONS] MESSAGE
+	Usage: vban_sendtext [OPTIONS] MESSAGE
 
 	-i, --ipaddress=IP	  : MANDATORY. ipaddress to send stream to
 	-p, --port=PORT         : MANDATORY. port to use
