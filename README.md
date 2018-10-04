@@ -91,6 +91,7 @@ Examples:
 	vban_receptor -i IP -p PORT -s STREAMNAME -c1,1,1,1             # keep only channel 1 and play it out on 4 output channels (given that your output device is able to do it)
 	vban_receptor -i IP -p PORT -s STREAMNAME -c2,41,125,7,1,45     # select some channels and play them out on 6 output channels (same comment)
 	vban_emitter -i IP -p PORT -s STREAMNAME -c1,1,1,1               # use audio source channel 1 (opening it in mono therefore, and build up a 4 channels stream with copies of the same data in all channels)
+	vban_sendtext -i IP -p 6980 -sCommand1 "Strip(0).mute = 1;"     # mute strip 1 of VoiceMeeter Banana. see [VoiceMeeter Banana manual](https://www.vb-audio.com/Voicemeeter/VoicemeeterBanana_UserManual.pdf) for more info
 
 LATENCY
 -------
