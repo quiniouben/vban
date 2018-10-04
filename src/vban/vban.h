@@ -110,7 +110,6 @@ enum VBanCodec
  ********************************************************/
 
 #define VBAN_BPS_MASK           0xE0
-#define VBAN_BPS_OFFSET         5
 #define VBAN_BPS_MAXNUMBER      25
 static long const VBanBPSList[VBAN_BPS_MAXNUMBER] =
 {
@@ -129,7 +128,6 @@ enum VBanDataTypeList
 };
 
 #define VBAN_STREAMTYPE_MASK        0xF0
-#define VBAN_STREAMTYPE_OFFSET      4
 enum VBanStreamType
 {
     VBAN_TXT_ASCII          =   0x00,

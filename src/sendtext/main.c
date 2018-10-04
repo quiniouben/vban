@@ -194,11 +194,15 @@ int main(int argc, char* const* argv)
     }
 
     hdr->vban       = VBAN_HEADER_FOURC;
+    hdr->format_SR  = config.bps | VBAN_PROTOCOL_TXT;
+    hdr->format_nbs = 0;
     hdr->format_nbc = config.ident;
-    hdr->format_SR  = config.bps << VBAN_BPS_OFFSET;
-    hdr->format_bit = config.format << VBAN_STREAMTYPE_OFFSET;
+    hdr->format_bit = config.format;
     strncpy(hdr->streamname, config.stream_name, VBAN_STREAM_NAME_SIZE);
     hdr->nuFrame    = 0;
+
+    logger_log(LOG_DEBUG, "%s: packet is vban: %u, sr: %d, nbs: %d, nbc: %d, bit: %d, name: %s, nu: %u, msg: %s",
+        __func__, hdr->vban, hdr->format_SR, hdr->format_nbs, hdr->format_nbc, hdr->format_bit, hdr->streamname, hdr->nuFrame, (char*)&main_s.buffer + sizeof(struct VBanHeader));
 
     ret = socket_write(main_s.socket, main_s.buffer, len + sizeof(struct VBanHeader));
 
