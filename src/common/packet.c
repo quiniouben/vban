@@ -127,7 +127,8 @@ static int packet_pcm_check(char const* buffer, size_t size)
 
 int packet_get_max_payload_size(char const* buffer)
 {
-    int ret = 0;
+    int sample_count = 0;
+    int sample_size = 0;
 
     struct VBanHeader const* const hdr = PACKET_HEADER_PTR(buffer);
 
@@ -137,13 +138,16 @@ int packet_get_max_payload_size(char const* buffer)
         return -EINVAL;
     }
 
-    ret = VBAN_DATA_MAX_SIZE / ((hdr->format_nbc+1) * VBanBitResolutionSize[(hdr->format_bit & VBAN_BIT_RESOLUTION_MASK)]);
-    if (ret > VBAN_SAMPLES_MAX_NB)
+    // size in bytes cannot exceed VBAN_DATA_MAX_SIZE
+    // size in samples cannot exceed VBAN_SAMPLES_MAX_NB
+    sample_size = ((hdr->format_nbc+1) * VBanBitResolutionSize[(hdr->format_bit & VBAN_BIT_RESOLUTION_MASK)]);
+    sample_count = VBAN_DATA_MAX_SIZE / sample_size;
+    if (sample_count > VBAN_SAMPLES_MAX_NB)
     {
-        ret = VBAN_SAMPLES_MAX_NB;
+        sample_count = VBAN_SAMPLES_MAX_NB;
     }
 
-    return ret;
+    return sample_count * sample_size;
 }
 
 int packet_get_stream_config(char const* buffer, struct stream_config_t* stream_config)
