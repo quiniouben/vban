@@ -53,26 +53,28 @@ include(GNUInstallDirs)
 
 foreach(exe vban_receptor vban_emitter vban_sendtext)
     target_include_directories(${exe} PRIVATE .)
-    if(ALSA)
-        target_compile_definition( ${exe} PRIVATE ALSA)
-        target_include_directories(${exe} PRIVATE "${ALSA_INCLUDE_DIRS}")
-        target_link_libraries(     ${exe} PRIVATE "${ALSA_LIBRARIES}")
+    if(WITH_ALSA)
+        target_compile_definitions(${exe} PRIVATE ALSA)
+        target_include_directories(${exe} PRIVATE ${ALSA_INCLUDE_DIRS})
+        target_link_libraries(     ${exe} PRIVATE ${ALSA_LIBRARIES})
     endif()
-    if(PULSEAUDIO)
-        target_compile_definition( ${exe} PRIVATE PULSEAUDIO)
-        target_include_directories(${exe} PRIVATE "${PulSEAudio_INCLUDE_DIRS}")
-        target_link_libraries(     ${exe} PRIVATE "${PulseAudio_LIBRARIES}")
+    if(WITH_PULSEAUDIO)
+        target_compile_definitions(${exe} PRIVATE PULSEAUDIO)
+        target_include_directories(${exe} PRIVATE ${PULSEAUDIO_INCLUDE_DIR})
+        # can't find something about pulse-simple in the pulseaudioconfig.cmake file,
+        # hard code the linking as it is needed
+        target_link_libraries(     ${exe} PRIVATE pulse-simple ${PULSEAUDIO_LIBRARY})
     endif()
-    if(JACK)
-        target_compile_definition( ${exe} PRIVATE JACK)
-        target_include_directories(${exe} PRIVATE "${JACK_INCLUDE_DIR}")
-        target_link_libraries(     ${exe} PRIVATE "${JACK_LIBRARIES}")
+    if(WITH_JACK)
+        target_compile_definitions(${exe} PRIVATE JACK)
+        target_include_directories(${exe} PRIVATE ${JACK_INCLUDE_DIR})
+        target_link_libraries(     ${exe} PRIVATE ${JACK_LIBRARIES})
     endif()
     
     install(TARGETS ${exe} DESTINATION "${CMAKE_INSTALL_BINDIR}")
 endforeach()
 
-if(ALSA)
+if(WITH_ALSA)
     target_sources(vban_receptor PRIVATE
         common/backend/alsa_backend.h
         common/backend/alsa_backend.c)
@@ -81,7 +83,7 @@ if(ALSA)
         common/backend/alsa_backend.c)
 endif()
 
-if(PULSEAUDIO)
+if(WITH_PULSEAUDIO)
     target_sources(vban_receptor PRIVATE
         common/backend/pulseaudio_backend.h
         common/backend/pulseaudio_backend.c)
@@ -90,7 +92,7 @@ if(PULSEAUDIO)
         common/backend/pulseaudio_backend.c)
 endif()
 
-if(JACK)
+if(WITH_JACK)
     target_sources(vban_receptor PRIVATE
         common/backend/jack_backend.h
         common/backend/jack_backend.c)
