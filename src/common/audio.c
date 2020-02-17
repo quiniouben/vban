@@ -257,12 +257,14 @@ int audio_read(audio_handle_t handle, char* buffer, size_t size)
         return -EINVAL;
     }
 
-    size = handle->backend->read(handle->backend, AUDIO_MAP_REVERSE_INPUT_PTR(handle, buffer), AUDIO_MAP_REVERSE_INPUT_SIZE(handle, size));
-    if (size < 0)
+    ret = handle->backend->read(handle->backend, AUDIO_MAP_REVERSE_INPUT_PTR(handle, buffer), AUDIO_MAP_REVERSE_INPUT_SIZE(handle, size));
+    if (ret < 0)
     {
         logger_log(LOG_ERROR, "%s: backend read failed", __func__);
-        return size;
+        return ret;
     }
+    
+    size = ret;
 
     ret = audio_map_channels(handle, buffer, size, 1);
     if (ret < 0)
