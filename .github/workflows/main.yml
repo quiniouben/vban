@@ -1,0 +1,15 @@
+name: CI
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: install alsa pulse and jack
+      run: sudo apt-get -y install libasound2-dev libpulse-dev libjack-dev
+    - name: run-cmake
+      uses: lukka/run-cmake@v0.10
