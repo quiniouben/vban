@@ -17,3 +17,9 @@ vban_emitter
 vban_receptor
 *~
 NOTES
+
+_build*
+build*
+_install
+.vscode
+CMakeLists.txt.user*
