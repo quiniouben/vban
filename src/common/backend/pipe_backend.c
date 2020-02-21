@@ -8,7 +8,14 @@
 #include <unistd.h>
 #include "common/logger.h"
 
+#ifndef _WIN32
 #define FIFO_FILENAME   "/tmp/vban_0"
+#else
+// name of named pipe is \\.\pipe\vban_0
+#include <windef.h> // for DWORD and others
+#include <winbase.h>
+#define FIFO_FILENAME   "\\\\.\\pipe\\vban_0"
+#endif
 
 struct pipe_backend_t
 {
@@ -60,6 +67,7 @@ int pipe_open(audio_backend_handle_t handle, char const* output_name, enum audio
         return -EINVAL;
     }
 
+#ifndef _WIN32
     ret = mkfifo(FIFO_FILENAME, 0666);
     if (ret < 0)
     {
@@ -69,6 +77,27 @@ int pipe_open(audio_backend_handle_t handle, char const* output_name, enum audio
         pipe_backend->fd = 0;
         return ret;
     }
+#else
+    // Windows has no mkfifo function. Use named pipes instead
+    HANDLE named_pipe = CreateNamedPipeA(
+        /* lpName */               FIFO_FILENAME,
+        /* dwOpenMode */           PIPE_ACCESS_DUPLEX,
+        /* dwPipeMode */           PIPE_TYPE_MESSAGE, // or maybe PIPE_TYPE_BYTE, let's see
+        /* nMaxInstances */        1,
+        /* nOutBufferSize */       0,
+        /* nInBufferSize */        0,
+        /* nDefaultTimeOut */      0,
+        /* lpSecurityAttributes */ 0);
+    if (named_pipe == INVALID_HANDLE_VALUE)
+    {
+        logger_log(LOG_FATAL, "%s: ???", __func__);
+        //todo:strerror
+        perror("mknod");
+        pipe_backend->fd = 0;
+        ret = GetLastError();
+        return ret;
+    }
+#endif // _WIN32
 
     pipe_backend->fd = open((output_name[0] == 0) ? FIFO_FILENAME : output_name, (direction == AUDIO_OUT) ? O_WRONLY : O_RDONLY);
     if (pipe_backend->fd == -1)

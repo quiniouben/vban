@@ -71,6 +71,11 @@ foreach(exe vban_receptor vban_emitter vban_sendtext)
         target_link_libraries(     ${exe} PRIVATE ${JACK_LIBRARIES})
     endif()
     
+    if(WIN32)
+        # Windows has no sys/socket.h, need to use Winsock2.h and link to lib
+        target_link_libraries(     ${exe} PRIVATE ws2_32)
+    endif()
+
     install(TARGETS ${exe} DESTINATION "${CMAKE_INSTALL_BINDIR}")
 endforeach()
 
