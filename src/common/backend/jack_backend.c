@@ -131,7 +131,7 @@ int jack_open(audio_backend_handle_t handle, char const* output_name, enum audio
 
     if (jack_backend->jack_client == 0)
     {
-        jack_backend->jack_client = jack_client_open("vban", 0, 0, (output_name[0] == '\0') ? 0 : output_name);
+        jack_backend->jack_client = jack_client_open((output_name[0] == '\0') ? "vban" : output_name, 0, 0);
         if (jack_backend->jack_client == 0)
         {
             logger_log(LOG_ERROR, "%s: could not open jack client", __func__);
