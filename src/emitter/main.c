@@ -241,13 +241,13 @@ int main(int argc, char* const* argv)
         {
             logger_log(LOG_ERROR, "%s: packet prepared is invalid", __func__);
             break;
-        }
-
-        ret = socket_write(main_s.socket, main_s.buffer, size + sizeof(struct VBanHeader));
-        if (ret < 0)
-        {
-            MainRun = 0;
-            break;
+        } else {
+            ret = socket_write(main_s.socket, main_s.buffer, size + sizeof(struct VBanHeader));
+            if (ret < 0)
+            {
+                MainRun = 0;
+                break;
+            }
         }
     }
 
