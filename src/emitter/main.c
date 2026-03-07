@@ -62,6 +62,7 @@ void usage()
     printf("-n, --nbchannels=VALUE  : Audio device number of channels. default 2\n");
     printf("-f, --format=VALUE      : Audio device sample format (see below). default is 16I (16bits integer)\n");
     printf("-c, --channels=LIST     : channels from the audio device to use. LIST is of form x,y,z,... default is to forward the stream as it is\n");
+    printf("-x, --bufsize=VALUE     : Audio device buffer size. default 1024\n");
 
     printf("-l, --loglevel=LEVEL    : Log level, from 0 (FATAL) to 4 (DEBUG). default is 1 (ERROR)\n");
     printf("-h, --help              : display this message\n\n");
@@ -84,6 +85,7 @@ int get_options(struct config_t* config, int argc, char* const* argv)
         {"nbchannels",  required_argument,  0, 'n'},
         {"format",      required_argument,  0, 'f'},
         {"channels",    required_argument,  0, 'c'},
+        {"bufsize",     optional_argument,  0, 'x'},
         {"loglevel",    required_argument,  0, 'l'},
         {"help",        no_argument,        0, 'h'},
         {0,             0,                  0,  0 }
@@ -100,7 +102,7 @@ int get_options(struct config_t* config, int argc, char* const* argv)
     /* yes, I assume config is not 0 */
     while (1)
     {
-        c = getopt_long(argc, argv, "i:p:s:b:d:r:n:f:c:l:h", options, 0);
+        c = getopt_long(argc, argv, "i:p:s:b:d:r:n:f:x:c:l:h", options, 0);
         if (c == -1)
             break;
 
@@ -140,6 +142,10 @@ int get_options(struct config_t* config, int argc, char* const* argv)
 
             case 'c':
                 ret = audio_parse_map_config(&config->map, optarg);
+                break;
+
+            case 'x':
+                config->audio.buffer_size = atoi(optarg);
                 break;
 
             case 'l':
