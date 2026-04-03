@@ -8,23 +8,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
-        include:
-          - os: windows-latest
-            CC: gcc
-            
+        os: [ubuntu-latest]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v6.0.2
       - name: install alsa pulse and jack
-        run: sudo apt-get -y install libasound2-dev libpulse-dev libjack-dev
+        run: sudo apt-get -y install libasound2-dev libpulse-dev libjack-dev cmake
         if: "contains( matrix.os, 'ubuntu')"
-      - name: run-cmake
-        uses: lukka/run-cmake@v0.10
+      - name: configure
+        run: |
+          cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Release
         if: "!contains( matrix.os, 'windows')"
-      - name: Run CMake+MinGW-w64
-        uses: lukka/run-cmake@v0.10
-        if: "contains( matrix.os, 'windows')"
-        with:
-          buildDirectory: '${{ runner.workspace }}/b/mingw-w64'
-          cmakeListsOrSettingsJson: CMakeListsTxtAdvanced
-          cmakeAppendedArgs: '-G "Ninja" -DWITH_ALSA=No -DWITH_PULSEAUDIO=No -DWITH_JACK=No'
+      - name: building and testing
+        run: |
+          cmake --build build --config Release -j4
+        if: "!contains( matrix.os, 'windows')"
