@@ -5,6 +5,8 @@ autom4te.cache
 compile
 config.log
 config.status
+config.guess
+config.sub
 configure
 depcomp
 install-sh
@@ -15,6 +17,7 @@ missing
 tags
 vban_emitter
 vban_receptor
+vban_sendtext
 *~
 NOTES
 
